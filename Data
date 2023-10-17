@@ -80,7 +80,6 @@ if interest_rates_data:
         st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
         st.table(non_central_bank_rates)
 
-    plot_yield_curve(interest_rates_data)
 
 st.subheader("Dynamic Yield Curves")
 option = st.selectbox('Select a region for the Yield Curve', ('US', 'UK', 'EU'))
