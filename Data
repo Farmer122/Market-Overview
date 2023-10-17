@@ -18,7 +18,6 @@ def fetch_yahoo_finance_news():
                 headlines.append(text)
     return headlines[:5]
 
-# Function to fetch key stock indices from Yahoo Finance
 def fetch_key_equities():
     indices = ['^FTSE', '^GSPC', '^DJI', '^N225']
     names = ['FTSE 100', 'S&P 500', 'Dow Jones', 'Nikkei 225']
@@ -29,21 +28,21 @@ def fetch_key_equities():
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Using a more general tag and class name to find the element
-        value_element = soup.find('span', {'class': 'Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)'})
-        if value_element:
-            value = value_element.get_text()
-            data.append({
-                'Index': name,
-                'Value': value
-            })
-        else:
-            data.append({
-                'Index': name,
-                'Value': 'N/A'
-            })
+        value = soup.find('span', {'data-reactid': '50'}).get_text()
+        data.append({
+            'Index': name,
+            'Value': value
+        })
 
     return data
+
+# Key Equities Overview
+st.subheader("Key Equities Overview")
+equities = fetch_key_equities()
+if equities:
+    st.table(equities)
+else:
+    st.write("No data available for key equities.")
 
 
 # Function to plot yield curves
@@ -79,13 +78,7 @@ if headlines:
             with col2:
                 st.write(f"{i+2}. {headlines[i+1]}")
 
-# Key Equities Overview
-st.subheader("Key Equities Overview")
-equities = fetch_key_equities()
-if equities:
-    st.table(equities)
-else:
-    st.write("No data available for key equities.")
+
 
 # Dropdown for selecting the country for yield curve
 options = ['United States', 'United Kingdom']
