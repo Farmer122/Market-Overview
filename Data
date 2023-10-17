@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 from streamlit import components
 
+api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
+
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://uk.finance.yahoo.com/topic/news/"
