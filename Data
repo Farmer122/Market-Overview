@@ -1,83 +1,89 @@
 import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
-import quandl
-from datetime import date, timedelta
+import yfinance as yf
 
-quandl.ApiConfig.api_key = "CMAmvGguyaxC5xiz2mq3"
+# Function to fetch inflation data
+def fetch_inflation(country, api_key):
+    url = f"https://api.api-ninjas.com/v1/inflation?country={country}"
+    headers = {'X-Api-Key': api_key}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()[0]
+    else:
+        return None
 
+# Function to fetch US yield curve data from FRED
+def fetch_us_yield(fred_api_key):
+    url = f"https://api.stlouisfed.org/fred/series/observations?series_id=GS10&api_key={fred_api_key}&file_type=json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()['observations']
+        return pd.DataFrame(data)
+
+# Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
-    """Fetch top 5 news headlines from Yahoo Finance."""
-    url = "https://uk.finance.yahoo.com/topic/news/"
+    url = "https://finance.yahoo.com/"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    headlines = [item.get_text() for item in soup.find_all('h3', class_='Mb(5px)') if item and item.get_text()]
+    headlines = []
+    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
+        text = item.get_text()
+        if text:
+            headlines.append(text)
+
     return headlines[:5]
 
+# Read UK yield data from Excel file
+uk_yield_data = pd.read_excel('/mnt/data/GLC Nominal daily data current month.xlsx', sheet_name='1. fwds, short end', skiprows=4)
+uk_yield_data = uk_yield_data.rename(columns={uk_yield_data.columns[0]: 'Date'}).dropna(subset=['Date'])
+uk_yield_data.set_index('Date', inplace=True)
+
 # Streamlit App
-st.title("Financial Dashboard")
+st.title("Dynamic Market Overview")
 
-# Display News
-st.subheader("Top 5 Financial News")
-news = fetch_financial_news()
-for i, article in enumerate(news):
-    st.write(f"{i+1}. [{article['text']}]({article['link']})")
+# Market News Headlines
+st.subheader("Market News Headlines")
+headlines = fetch_yahoo_finance_news()
+for headline in headlines:
+    st.write(f"- {headline}")
 
-# Widgets
-country = st.selectbox('Select Country for Yield Curve', ('UK', 'US', 'Eurozone'))
-indicator = st.selectbox('Select Economic Indicator', ('Inflation Rate', 'Interest Rate'))
+# Section: Interest Rates and Inflation
+st.subheader("Interest Rates and Inflation")
+api_key = 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'
+us_inflation = fetch_inflation('United States', api_key)
+uk_inflation = fetch_inflation('United Kingdom', api_key)
+st.write(f"US Inflation: {us_inflation['yearly_rate_pct']}%")
+st.write(f"UK Inflation: {uk_inflation['yearly_rate_pct']}%")
 
-# Dynamic Dates
-end_date = date.today()
-start_date = end_date - timedelta(days=30)  # Last 30 days
+# Section: Yield Curves
+st.subheader("Yield Curves")
 
-# Fetch and Plot Yield Curve Data
-if country == 'UK':
-    data = quandl.get("BOE/IUDSNPY", start_date=start_date, end_date=end_date)
-    if not data.empty:
-        plt.plot(data)
-        plt.title('UK Yield Curve')
-        plt.xlabel('Date')
-        plt.ylabel('Yield (%)')
-        st.pyplot(plt)
+# Fetch and plot US Yield Curve
+fred_api_key = '5da565b90c3bd82a6514a1b3322a43c8'
+us_yield_data = fetch_us_yield(fred_api_key)
+show_us_yield = st.checkbox('Show US Yield Curve')
+if show_us_yield:
+    plt.plot(us_yield_data['date'], us_yield_data['value'])
+    plt.title('US Yield Curve')
+    plt.xlabel('Date')
+    plt.ylabel('Yield')
+    st.pyplot()
 
-elif country == 'US':
-    data = quandl.get("USTREASURY/YIELD", start_date=start_date, end_date=end_date)
-    if not data.empty:
-        plt.plot(data)
-        plt.title('US Yield Curve')
-        plt.xlabel('Date')
-        plt.ylabel('Yield (%)')
-        st.pyplot(plt)
+# Plot UK Yield Curve
+show_uk_yield = st.checkbox('Show UK Yield Curve')
+if show_uk_yield:
+    plt.plot(uk_yield_data.index, uk_yield_data['Unnamed: 4'])
+    plt.title('UK Yield Curve')
+    plt.xlabel('Date')
+    plt.ylabel('Yield')
+    st.pyplot()
 
-elif country == 'Eurozone':
-    data = quandl.get("ECB/EONIA", start_date=start_date, end_date=end_date)
-    if not data.empty:
-        plt.plot(data)
-        plt.title('Eurozone Yield Curve')
-        plt.xlabel('Date')
-        plt.ylabel('Yield (%)')
-        st.pyplot(plt)
-
-# Display Economic Indicators
-if indicator == 'Inflation Rate':
-    uk_data = quandl.get("RATEINF/INFLATION_GBR", start_date=start_date, end_date=end_date)
-    us_data = quandl.get("RATEINF/INFLATION_USA", start_date=start_date, end_date=end_date)
-    jp_data = quandl.get("RATEINF/INFLATION_JPN", start_date=start_date, end_date=end_date)
-    
-    if not uk_data.empty:
-        st.write(f"UK: Inflation rate {uk_data['Value'].iloc[-1]}%")
-    if not us_data.empty:
-        st.write(f"US: Inflation rate {us_data['Value'].iloc[-1]}%")
-    if not jp_data.empty:
-        st.write(f"Japan: Inflation rate {jp_data['Value'].iloc[-1]}%")
-
-
-# Economic Calendar
-st.subheader("Economic Calendar")
-iframe_code = '''
-<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
-'''
-st.components.v1.html(iframe_code, height=500)
+# Section: Equity Indices
+st.subheader("Key Equity Indices")
+indices = ['^N225', '^DJI', '^GSPC', '^FTSE']
+index_data = {index: yf.Ticker(index).info for index in indices}
+st.write(pd.DataFrame(index_data).T[['longName', 'regularMarketPrice', 'regularMarketChange', 'regularMarketChangePercent']])
