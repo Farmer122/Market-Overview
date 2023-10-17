@@ -83,7 +83,7 @@ def plot_yield_curve(data):
 
 def fetch_key_interest_rates(api_key):
     api_url = 'https://api.api-ninjas.com/v1/interestrate'
-    headers = {'X-Api-Key': api_key}
+    headers = {'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS': api_key}
     response = requests.get(api_url, headers=headers)
     
     if response.status_code == 200:
@@ -119,7 +119,7 @@ if interest_rates_data:
 
 def fetch_key_interest_rates(api_key):
     api_url = 'https://api.api-ninjas.com/v1/interestrate'
-    headers = {'X-Api-Key': api_key}
+    headers = {'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS': api_key}
     response = requests.get(api_url, headers=headers)
     
     if response.status_code == 200:
