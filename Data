@@ -19,7 +19,7 @@ def fetch_yahoo_finance_news():
 
 # Function to scrape yield data from Trading Economics
 def fetch_yield_data(country):
-    url = f"https://tradingeconomics.com/{country.lower()}/interest-rate"
+    url = f"https://tradingeconomics.com/{country.lower()}/30-year-bond-yield"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     
@@ -53,7 +53,8 @@ def plot_yield_curve(yield_data, country):
 st.title('Dynamic Market Overview')
 
 # Dropdown for selecting the country for yield curve
-country = st.selectbox('Select a country for Yield Curve:', ['US', 'UK'])
+country = st.selectbox('Select a country for Yield Curve:', ['united-states', 'united-kingdom'])
+
 
 # Fetch and plot yield curve
 yield_data = fetch_yield_data(country)
