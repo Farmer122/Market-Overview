@@ -3,53 +3,31 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-from fredapi import Fred
 
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://finance.yahoo.com/"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-
     headlines = []
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
         text = item.get_text()
         if text:
             headlines.append(text)
-
     return headlines[:5]  # Return top 5 headlines
 
-# Initialize FRED API
-fred = Fred(api_key="5da565b90c3bd82a6514a1b3322a43c8")
+# Fetch latest yield curve data from U.S. Department of the Treasury
+url = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202310"
+us_yield_data = pd.read_html(url)[1]
+us_yield_data = us_yield_data.dropna().reset_index(drop=True)
+us_yield_data.columns = ["Date", "1 Mo", "2 Mo", "3 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
+us_yield_data["Date"] = pd.to_datetime(us_yield_data["Date"])
+us_yield_data.set_index("Date", inplace=True)
+for col in us_yield_data.columns:
+    us_yield_data[col] = pd.to_numeric(us_yield_data[col], errors='coerce')
 
-us_series_ids = ['IR14260', 'IR14270', 'IR14275', 'IR14280', 'IR14285', 'IR14290', 'IR14295', 'IR14300', 'IR14305', 'IR14310', 'IR14315']
-us_maturities = ['1mo', '3mo', '6mo', '1yr', '2yr', '3yr', '5yr', '7yr', '10yr', '20yr', '30yr']
-us_yield_data = {}
-
-for series_id in us_series_ids:
-    url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={api_key}&file_type=json"
-    response = requests.get(url)
-    data = response.json()['observations']
-    dates = [x['date'] for x in data]
-    values = [float(x['value']) if x['value'] != '.' else None for x in data]
-    us_yield_data[series_id] = pd.Series(values, index=pd.to_datetime(dates))
-
-# Read UK yield data from CSV file
-uk_yield_data = pd.read_csv("/path/to/your/csv/file/UK_fwd_curve_data_updated.csv")
-# Clean the data by skipping unnecessary rows and setting appropriate headers
-uk_yield_data_clean = uk_yield_data.iloc[4:].copy()  # Skip the initial 4 rows
-uk_yield_data_clean.columns = ['Forecast Date'] + uk_yield_data.iloc[2, 1:].astype(str).tolist()  # Set the column names
-
-# Convert 'Forecast Date' to datetime format and reset it as the index
-uk_yield_data_clean['Forecast Date'] = pd.to_datetime(uk_yield_data_clean['Forecast Date'], errors='coerce')
-uk_yield_data_clean.dropna(subset=['Forecast Date'], inplace=True)  # Drop rows where 'Forecast Date' is NaT (Not a Time)
-uk_yield_data_clean.set_index('Forecast Date', inplace=True)
-
-# Convert all other columns to float
-uk_yield_data_clean = uk_yield_data_clean.apply(pd.to_numeric, errors='coerce')
-
-uk_yield_data_clean['Date'] = pd.to_datetime(uk_yield_data_clean['Date'])
-uk_yield_data_clean.set_index('Date', inplace=True)
+# Fetch UK yield data from uploaded CSV
+uk_yield_data = pd.read_csv('/mnt/data/GLG Data.csv', index_col=0)
 
 # Web App Title
 st.title("Dynamic Market Overview")
@@ -60,18 +38,18 @@ headlines = fetch_yahoo_finance_news()
 for headline in headlines:
     st.write(f"- {headline}")
 
+# Yield Curve Dropdown
 yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
 
 if yield_curve_choice == 'US':
     # US Yield Curve
-    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data['IR14260'].index)
-    selected_date_us_yield = [us_yield_data[series_id].loc[selected_date_us] if selected_date_us in us_yield_data[series_id].index else None for series_id in us_series_ids]
-    plt.plot(us_maturities, selected_date_us_yield)
+    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data.index)
+    selected_date_us_yield = us_yield_data.loc[selected_date_us]
+    plt.plot(selected_date_us_yield.index, selected_date_us_yield.values)
     plt.title('US Yield Curve')
-    plt.xlabel('Maturity (Months/Years)')
+    plt.xlabel('Maturity')
     plt.ylabel('Yield (%)')
     st.pyplot()
-
 elif yield_curve_choice == 'UK':
     # UK Yield Curve
     selected_date_uk = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
@@ -81,15 +59,14 @@ elif yield_curve_choice == 'UK':
     plt.ylabel('Yield (%)')
     st.pyplot()
 
-# Inflation Rates
-show_inflation = st.checkbox('Show Inflation Rates')
-if show_inflation:
-    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United States")
-    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
-    if response.status_code == requests.codes.ok:
-        inflation_data = response.json()[0]
-        st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
-    else:
-        st.write("Error fetching inflation data.")
 
-# Note: Replace `/path/to/your/csv/file/` with the actual path where you have stored the UK yield data CSV file.
+st.subheader("Economic Calendar")
+iframe_code = '''
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
+'''
+st.components.v1.html(iframe_code, height=500)
+
+
+
+
+
