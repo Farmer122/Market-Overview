@@ -30,8 +30,8 @@ def fetch_yahoo_finance_news():
     return headlines[:5]
 
 # Read UK yield data from Excel file
-uk_yield_data = pd.read_excel('/path/to/your/excel/file/GLC Nominal daily data current month.xlsx', sheet_name='2. fwd curve', skiprows=4)
-uk_yield_data = uk_yield_data.rename(columns={uk_yield_data.columns[0]: 'Date'}).dropna(subset=['Date'])
+uk_yield_data = pd.read_csv('/path/to/your/csv/file/UK_fwd_curve_data_updated.csv')
+uk_yield_data['Date'] = pd.to_datetime(uk_yield_data['Date'])
 uk_yield_data.set_index('Date', inplace=True)
 
 # Streamlit App
@@ -54,13 +54,13 @@ st.write(f"UK Inflation: {uk_inflation['yearly_rate_pct']}%")
 # Section: Yield Curves
 st.subheader("Yield Curves")
 
-# Plot UK Yield Curve
 show_uk_yield = st.checkbox('Show UK Yield Curve')
 if show_uk_yield:
-    plt.plot(uk_yield_data.index, uk_yield_data['Unnamed: 1'])  # Replace 'Unnamed: 1' with the correct column for spot rates
+    selected_date = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
+    plt.plot(uk_yield_data.columns, uk_yield_data.loc[selected_date])
     plt.title('UK Yield Curve')
-    plt.xlabel('Date')
-    plt.ylabel('Yield')
+    plt.xlabel('Maturity (Years)')
+    plt.ylabel('Yield (%)')
     st.pyplot()
 
 # Section: Equity Indices
