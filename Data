@@ -22,12 +22,17 @@ def fetch_yahoo_finance_news():
 # Initialize FRED API
 fred = Fred(api_key="5da565b90c3bd82a6514a1b3322a43c8")
 
+us_series_ids = ['IR14260', 'IR14270', 'IR14275', 'IR14280', 'IR14285', 'IR14290', 'IR14295', 'IR14300', 'IR14305', 'IR14310', 'IR14315']
 us_maturities = ['1mo', '3mo', '6mo', '1yr', '2yr', '3yr', '5yr', '7yr', '10yr', '20yr', '30yr']
 us_yield_data = {}
-for mat in us_maturities:
-    series_id = f'GS{mat.upper()}'
-    us_yield_data[mat] = fred.get_series(series_id).dropna()
 
+for series_id in us_series_ids:
+    url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={api_key}&file_type=json"
+    response = requests.get(url)
+    data = response.json()['observations']
+    dates = [x['date'] for x in data]
+    values = [float(x['value']) if x['value'] != '.' else None for x in data]
+    us_yield_data[series_id] = pd.Series(values, index=pd.to_datetime(dates))
 
 # Read UK yield data from CSV file
 uk_yield_data = pd.read_csv("/path/to/your/csv/file/UK_fwd_curve_data_updated.csv")
@@ -59,13 +64,14 @@ yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
 
 if yield_curve_choice == 'US':
     # US Yield Curve
-    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data['1mo'].index)
-    selected_date_us_yield = [us_yield_data[mat].loc[selected_date_us] if selected_date_us in us_yield_data[mat].index else None for mat in us_maturities]
+    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data['IR14260'].index)
+    selected_date_us_yield = [us_yield_data[series_id].loc[selected_date_us] if selected_date_us in us_yield_data[series_id].index else None for series_id in us_series_ids]
     plt.plot(us_maturities, selected_date_us_yield)
     plt.title('US Yield Curve')
     plt.xlabel('Maturity (Months/Years)')
     plt.ylabel('Yield (%)')
     st.pyplot()
+
 elif yield_curve_choice == 'UK':
     # UK Yield Curve
     selected_date_uk = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
