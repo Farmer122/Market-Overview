@@ -33,22 +33,39 @@ def fetch_key_interest_rates(api_key):
         st.write(f"Error: {response.status_code}, {response.text}")
         return None
 
+# Function to plot yield curves
 def plot_yield_curve(data, region):
     tenors = []
     rates = []
     
+    # Define the acceptable tenors for each region
+    acceptable_tenors_us = ['Overnight', '1 Month', '3 Months', '6 Months', '1 Year', '2 Years', '5 Years', '10 Years', '30 Years']
+    acceptable_tenors_uk_eu = ['1 Year', '2 Years', '5 Years', '10 Years', '30 Years']
+
     for item in data['non_central_bank_rates']:
         if region in item['name']:
-            tenors.append(item['name'].split("-")[-1].strip())
-            rates.append(item['rate_pct'])
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(tenors, rates, marker='o')
-    plt.title(f'Yield Curve for {region}')
-    plt.xlabel('Tenor')
-    plt.ylabel('Interest Rate (%)')
-    plt.grid(True)
-    st.pyplot(plt)
+            tenor = item['name'].split("-")[-1].strip()
+            rate = item['rate_pct']
+            
+            if region == 'US' and tenor in acceptable_tenors_us:
+                tenors.append(tenor)
+                rates.append(rate)
+                
+            elif region in ['UK', 'EU'] and tenor in acceptable_tenors_uk_eu:
+                tenors.append(tenor)
+                rates.append(rate)
+
+    if tenors and rates:
+        plt.figure(figsize=(10, 6))
+        plt.plot(tenors, rates, marker='o')
+        plt.title(f'Yield Curve for {region}')
+        plt.xlabel('Tenor')
+        plt.ylabel('Interest Rate (%)')
+        plt.grid(True)
+        st.pyplot(plt)
+    else:
+        st.write(f"No yield curve data available for {region}.")
+
 
 # Web App Title
 st.title("Dynamic Market Overview")
