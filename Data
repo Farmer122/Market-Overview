@@ -30,7 +30,7 @@ def fetch_yahoo_finance_news():
     return headlines[:5]
 
 # Read UK yield data from Excel file
-uk_yield_data = pd.read_csv('/path/to/your/csv/file/UK_fwd_curve_data_updated.csv')
+uk_yield_data = pd.read_csv('"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\GLC Real DATA.csv")
 uk_yield_data['Date'] = pd.to_datetime(uk_yield_data['Date'])
 uk_yield_data.set_index('Date', inplace=True)
 
