@@ -2,8 +2,9 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
+import pandas as pd  # Make sure to import pandas
 
-# Function to scrape news from Yahoo Finance
+# Function to fetch news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://uk.finance.yahoo.com/topic/news/"
     response = requests.get(url)
@@ -17,54 +18,47 @@ def fetch_yahoo_finance_news():
                 headlines.append(text)
     return headlines[:5]
 
-# Function to scrape yield data from Trading Economics
-def fetch_yield_data(country):
-    url = f"https://tradingeconomics.com/{country.lower()}/30-year-bond-yield"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    yield_data = {}
-    try:
-        table = soup.find_all('table')[0]
-        rows = table.find_all('tr')
-        for row in rows[1:]:
-            cols = row.find_all('td')
-            if len(cols) >= 2:
-                bond = cols[0].text.strip()
-                yield_value = float(cols[1].text.strip())
-                yield_data[bond] = yield_value
-    except IndexError:
-        st.write("Could not fetch yield data. Please check the Trading Economics URL.")
-    
-    return yield_data
+# Function to fetch key stock indices from Yahoo Finance
+def fetch_key_equities():
+    indices = ['^FTSE', '^GSPC', '^DJI', '^N225']
+    names = ['FTSE 100', 'S&P 500', 'Dow Jones', 'Nikkei 225']
+    data = []
+
+    for index, name in zip(indices, names):
+        url = f"https://finance.yahoo.com/quote/{index}"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        value = soup.find('span', {'data-reactid': '50'}).get_text()
+        data.append({
+            'Index': name,
+            'Value': value
+        })
+    return data
 
 # Function to plot yield curves
-def plot_yield_curve(yield_data, country):
-    bonds = list(yield_data.keys())
-    yields = list(yield_data.values())
-    plt.figure(figsize=(10, 5))
-    plt.plot(bonds, yields, marker='o')
+def plot_yield_curve(data, country):
+    tenors = []
+    rates = []
+
+    # Extract the tenors and rates from the data and plot
+    for row in data:
+        tenors.append(row['Tenor'])
+        rates.append(row['Yield'])
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(tenors, rates, marker='o')
     plt.title(f'{country} Yield Curve')
-    plt.xlabel('Bond')
+    plt.xlabel('Tenor')
     plt.ylabel('Yield (%)')
     plt.grid(True)
     st.pyplot()
 
-st.title('Dynamic Market Overview')
-
-# Dropdown for selecting the country for yield curve
-country = st.selectbox('Select a country for Yield Curve:', ['united-states', 'united-kingdom'])
-
-
-# Fetch and plot yield curve
-yield_data = fetch_yield_data(country)
-if yield_data:
-    plot_yield_curve(yield_data, country)
-else:
-    st.write(f"No yield data available for {country}.")
+# Web App Title
+st.title("Dynamic Market Overview")
 
 # Market News Headlines
-st.subheader("Top 5 Market News Headlines")
+st.subheader("Top 10 Market News Headlines")
 headlines = fetch_yahoo_finance_news()
 if headlines:
     col1, col2 = st.columns(2)
@@ -74,6 +68,41 @@ if headlines:
         if i + 1 < len(headlines):
             with col2:
                 st.write(f"{i+2}. {headlines[i+1]}")
+
+# Key Equities Overview
+st.subheader("Key Equities Overview")
+equities = fetch_key_equities()
+if equities:
+    st.table(equities)
+else:
+    st.write("No data available for key equities.")
+
+# Dropdown for selecting the country for yield curve
+options = ['United States', 'United Kingdom']
+country = st.selectbox('Select a country for yield curve:', options)
+
+# Fetch and plot yield curve
+if country == 'United States':
+    url = "https://tradingeconomics.com/united-states/30-year-bond-yield"
+elif country == 'United Kingdom':
+    url = "https://tradingeconomics.com/united-kingdom/30-year-bond-yield"
+
+response = requests.get(url)
+soup = BeautifulSoup(response.content, 'html.parser')
+table = soup.find('table')
+rows = table.find_all('tr')
+data = []
+
+for row in rows[1:]:  # Skip the header row
+    cols = row.find_all('td')
+    tenor = cols[0].text.strip()
+    yield_value = float(cols[1].text.strip())
+    data.append({'Tenor': tenor, 'Yield': yield_value})
+
+if data:
+    plot_yield_curve(data, country)
+else:
+    st.write(f"Could not fetch data for {country}.")
 
 # Economic Calendar
 st.subheader("Economic Calendar")
