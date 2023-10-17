@@ -3,17 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import yfinance as yf
-
-# Function to fetch inflation data
-def fetch_inflation(country, api_key):
-    url = f"https://api.api-ninjas.com/v1/inflation?country={country}"
-    headers = {'X-Api-Key': api_key}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()[0]
-    else:
-        return None
+from fredapi import Fred
 
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
@@ -27,14 +17,29 @@ def fetch_yahoo_finance_news():
         if text:
             headlines.append(text)
 
-    return headlines[:5]
+    return headlines[:5]  # Return top 5 headlines
 
-# Read UK yield data from Excel file
-uk_yield_data = pd.read_csv('"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\GLC Real DATA.csv")
-uk_yield_data['Date'] = pd.to_datetime(uk_yield_data['Date'])
-uk_yield_data.set_index('Date', inplace=True)
+# Initialize FRED API
+fred = Fred(api_key="5da565b90c3bd82a6514a1b3322a43c8")
 
-# Streamlit App
+# Read UK yield data from CSV file
+uk_yield_data = pd.read_csv("/path/to/your/csv/file/UK_fwd_curve_data_updated.csv")
+# Clean the data by skipping unnecessary rows and setting appropriate headers
+uk_yield_data_clean = uk_yield_data.iloc[4:].copy()  # Skip the initial 4 rows
+uk_yield_data_clean.columns = ['Forecast Date'] + uk_yield_data.iloc[2, 1:].astype(str).tolist()  # Set the column names
+
+# Convert 'Forecast Date' to datetime format and reset it as the index
+uk_yield_data_clean['Forecast Date'] = pd.to_datetime(uk_yield_data_clean['Forecast Date'], errors='coerce')
+uk_yield_data_clean.dropna(subset=['Forecast Date'], inplace=True)  # Drop rows where 'Forecast Date' is NaT (Not a Time)
+uk_yield_data_clean.set_index('Forecast Date', inplace=True)
+
+# Convert all other columns to float
+uk_yield_data_clean = uk_yield_data_clean.apply(pd.to_numeric, errors='coerce')
+
+uk_yield_data_clean['Date'] = pd.to_datetime(uk_yield_data_clean['Date'])
+uk_yield_data_clean.set_index('Date', inplace=True)
+
+# Web App Title
 st.title("Dynamic Market Overview")
 
 # Market News Headlines
@@ -43,28 +48,35 @@ headlines = fetch_yahoo_finance_news()
 for headline in headlines:
     st.write(f"- {headline}")
 
-# Section: Interest Rates and Inflation
-st.subheader("Interest Rates and Inflation")
-api_key = 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'
-us_inflation = fetch_inflation('United States', api_key)
-uk_inflation = fetch_inflation('United Kingdom', api_key)
-st.write(f"US Inflation: {us_inflation['yearly_rate_pct']}%")
-st.write(f"UK Inflation: {uk_inflation['yearly_rate_pct']}%")
+# US Yield Curve
+show_us_yield = st.checkbox('Show US Yield Curve')
+if show_us_yield:
+    us_yield_data = fred.get_series('GS10')  # 10-year Treasury Rate
+    plt.plot(us_yield_data.index, us_yield_data.values)
+    plt.title('US 10-Year Treasury Yield')
+    plt.xlabel('Date')
+    plt.ylabel('Yield (%)')
+    st.pyplot()
 
-# Section: Yield Curves
-st.subheader("Yield Curves")
-
+# UK Yield Curve
 show_uk_yield = st.checkbox('Show UK Yield Curve')
 if show_uk_yield:
-    selected_date = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
-    plt.plot(uk_yield_data.columns, uk_yield_data.loc[selected_date])
+    selected_date = st.selectbox('Select Date for UK Yield Curve', uk_yield_data_clean.index)
+    plt.plot(uk_yield_data.columns, uk_yield_data_clean.loc[selected_date])
     plt.title('UK Yield Curve')
     plt.xlabel('Maturity (Years)')
     plt.ylabel('Yield (%)')
     st.pyplot()
 
-# Section: Equity Indices
-st.subheader("Key Equity Indices")
-indices = ['^N225', '^DJI', '^GSPC', '^FTSE']
-index_data = {index: yf.Ticker(index).info for index in indices}
-st.write(pd.DataFrame(index_data).T[['longName', 'regularMarketPrice', 'regularMarketChange', 'regularMarketChangePercent']])
+# Inflation Rates
+show_inflation = st.checkbox('Show Inflation Rates')
+if show_inflation:
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United States")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
+    else:
+        st.write("Error fetching inflation data.")
+
+# Note: Replace `/path/to/your/csv/file/` with the actual path where you have stored the UK yield data CSV file.
