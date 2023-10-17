@@ -34,37 +34,45 @@ def fetch_key_interest_rates(api_key):
         return None
 
 # Function to plot yield curves
-def plot_yield_curve(data, region):
+def plot_yield_curve(data, country):
     tenors = []
     rates = []
     
-    # Define the acceptable tenors for each region
-    acceptable_tenors_us = ['Overnight', '1 Month', '3 Months', '6 Months', '1 Year', '2 Years', '5 Years', '10 Years', '30 Years']
-    acceptable_tenors_uk_eu = ['1 Year', '2 Years', '5 Years', '10 Years', '30 Years']
-
+    if country == 'US':
+        identifiers = ["SOFR", "UST 2y", "UST 5y", "UST 10y", "UST 30y"]
+    elif country == 'UK':
+        identifiers = ["SONIA", "GILT 2y", "GILT 5y", "GILT 10y", "GILT 30y"]
+    elif country == 'EU':
+        identifiers = ["Euribor", "Bund 2y", "Bund 5y", "Bund 10y", "Bund 30y"]
+    
     for item in data['non_central_bank_rates']:
-        if region in item['name']:
-            tenor = item['name'].split("-")[-1].strip()
-            rate = item['rate_pct']
-            
-            if region == 'US' and tenor in acceptable_tenors_us:
-                tenors.append(tenor)
-                rates.append(rate)
-                
-            elif region in ['UK', 'EU'] and tenor in acceptable_tenors_uk_eu:
-                tenors.append(tenor)
-                rates.append(rate)
+        if any(identifier in item['name'] for identifier in identifiers):
+            tenors.append(item['name'].split("-")[-1].strip())
+            rates.append(item['rate_pct'])
 
     if tenors and rates:
         plt.figure(figsize=(10, 6))
         plt.plot(tenors, rates, marker='o')
-        plt.title(f'Yield Curve for {region}')
+        plt.title(f'{country} Yield Curve')
         plt.xlabel('Tenor')
         plt.ylabel('Interest Rate (%)')
         plt.grid(True)
-        st.pyplot(plt)
-    else:
+        st.pyplot()
         st.write(f"No yield curve data available for {region}.")
+
+st.title('Dynamic Yield Curves')
+
+# Dropdown for selecting the country
+options = ['US', 'UK', 'EU']
+country = st.selectbox('Select a country:', options)
+
+# Fetch and plot data
+if country:
+    data = fetch_key_interest_rates(country)
+    if data:
+        plot_yield_curve(data, country)
+    else:
+        st.write(f"Could not fetch data for {country}.")
 
 
 # Web App Title
@@ -98,9 +106,7 @@ if interest_rates_data:
         st.table(non_central_bank_rates)
 
 
-st.subheader("Dynamic Yield Curves")
-option = st.selectbox('Select a region for the Yield Curve', ('US', 'UK', 'EU'))
-plot_yield_curve(interest_rates_data, option)
+
 
 # Economic Calendar
 st.subheader("Economic Calendar")
