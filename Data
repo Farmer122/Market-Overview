@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-from streamlit import components
+import matplotlib.pyplot as plt
 
 api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
 
@@ -13,61 +13,19 @@ def fetch_yahoo_finance_news():
 
     headlines = []
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
-        text = item.get_text()
-        if text:
-            headlines.append(text)
+        if item:  # Check for None
+            text = item.get_text()
+            if text:
+                headlines.append(text)
 
     return headlines[:5]  # Return top 5 headlines
 
-# Web App Title
-st.title("Dynamic Market Overview")
-
-
-# Market News Headlines
-st.subheader("Top 10 Market News Headlines")
-headlines = fetch_yahoo_finance_news()
-
-# Create columns
-col1, col2 = st.columns(2)
-
-# Loop through the headlines and display them in two columns
-for i in range(0, len(headlines), 2):
-    with col1:
-        st.write(f"{i+1}. {headlines[i]}")
-
-    # Check if there is an even number of headlines
-    if i+1 < len(headlines):
-        with col2:
-            st.write(f"{i+2}. {headlines[i+1]}")
-
-# Function to scrape key equity indices from Yahoo Finance
-def fetch_key_equities():
-    indices = ['^FTSE', '^GSPC', '^DJI', '^N225']
-    names = ['FTSE 100', 'S&P 500', 'Dow Jones', 'Nikkei 225']
-    data = []
-
-    for index, name in zip(indices, names):
-        url = f"https://finance.yahoo.com/quote/{index}"
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        value = soup.find('span', {'data-reactid': '50'}).get_text()
-        data.append({
-            'Index': name,
-            'Value': value
-        })
-
-    return data
-
-
-
 # Fetch and display key interest rates
-
 def fetch_key_interest_rates(api_key):
     api_url = 'https://api.api-ninjas.com/v1/interestrate'
-    headers = {'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS': api_key}
+    headers = {'X-Api-Key': api_key}
     response = requests.get(api_url, headers=headers)
-    
+
     if response.status_code == 200:
         data = response.json()
         return data
@@ -75,44 +33,16 @@ def fetch_key_interest_rates(api_key):
         st.write(f"Error: {response.status_code}, {response.text}")
         return None
 
-
-
-
-interest_rates_data = fetch_key_interest_rates(api_key)
-
-if interest_rates_data:
-    st.subheader("Key Interest Rates")
-    
-    central_bank_rates = interest_rates_data.get('central_bank_rates', [])
-    non_central_bank_rates = interest_rates_data.get('non_central_bank_rates', [])
-    
-    if central_bank_rates:
-        st.write("### Central Bank Rates")
-        st.table(central_bank_rates)
-        
-    if non_central_bank_rates:
-        st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
-        st.table(non_central_bank_rates)
-        
-    # Add this line to plot the yield curve based on the fetched data
-    plot_yield_curve(interest_rates_data)
-
-
-
-
-api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
-
-import matplotlib.pyplot as plt
-
 def plot_yield_curve(data):
+    # Your yield curve plotting code here
     tenors = []
     rates = []
-    
+
     for item in data['non_central_bank_rates']:
-        if "Euribor" in item['name']:  # Replace 'Euribor' with the appropriate identifier for the rates you're interested in.
-            tenors.append(item['name'].split("-")[-1].strip())  # Parsing to get only the '1 week', '1 month', etc.
+        if "Euribor" in item['name']:
+            tenors.append(item['name'].split("-")[-1].strip())
             rates.append(item['rate_pct'])
-    
+
     plt.figure(figsize=(10, 6))
     plt.plot(tenors, rates, marker='o')
     plt.title('Yield Curve')
@@ -121,43 +51,41 @@ def plot_yield_curve(data):
     plt.grid(True)
     st.pyplot(plt)
 
+# Web App Title
+st.title("Dynamic Market Overview")
+
+# Market News Headlines
+st.subheader("Top 10 Market News Headlines")
+headlines = fetch_yahoo_finance_news()
+if headlines:
+    col1, col2 = st.columns(2)
+    for i in range(0, len(headlines), 2):
+        with col1:
+            st.write(f"{i+1}. {headlines[i]}")
+        if i + 1 < len(headlines):
+            with col2:
+                st.write(f"{i+2}. {headlines[i+1]}")
+
 # Fetch and display key interest rates
 interest_rates_data = fetch_key_interest_rates(api_key)
-
 if interest_rates_data:
     st.subheader("Key Interest Rates")
-    
     central_bank_rates = interest_rates_data.get('central_bank_rates', [])
     non_central_bank_rates = interest_rates_data.get('non_central_bank_rates', [])
-    
+
     if central_bank_rates:
         st.write("### Central Bank Rates")
         st.table(central_bank_rates)
-        
+
     if non_central_bank_rates:
         st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
         st.table(non_central_bank_rates)
-else:
-    st.write("No data available for key interest rates.")
 
-
-
-
-
-
-
-# Key Equities Overview
-st.subheader("Key Equities Overview")
-equities = fetch_key_equities()
-if equities:
-    st.table(equities)
-else:
-    st.write("No data available for key equities.")
-
+    plot_yield_curve(interest_rates_data)
 
 # Economic Calendar
 st.subheader("Economic Calendar")
 iframe_code = '''
-<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe><div class="poweredBy" style="font-family: Arial, Helvetica, sans-serif;"><span style="font-size: 11px;color: #333333;text-decoration: none;">Real Time Economic Calendar provided by <a href="https://www.investing.com/" rel="nofollow" target="_blank" style="font-size: 11px;color: #06529D; font-weight: bold;" class="underline_link">Investing.com</a>.</span></div>
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
 '''
-components.v1.html(iframe_code, height=500)
+st.components.v1.html(iframe_code, height=500)
