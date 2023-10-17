@@ -76,15 +76,15 @@ if show_inflation == 'US':
         st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
     else:
         st.write("Error fetching inflation data.")
-elif show_inflation = 'UK':
-    if show_inflation:
-        api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United Kingdom")
-        response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
-        if response.status_code == requests.codes.ok:
-            inflation_data = response.json()[0]
-            st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
-        else:
-            st.write("Error fetching inflation data.")
+elif show_inflation == 'UK':  # Fixed the comparison operator here
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United Kingdom")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
+    else:
+        st.write("Error fetching inflation data.")
+
 
 
 
