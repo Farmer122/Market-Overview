@@ -79,6 +79,23 @@ def plot_yield_curve(data):
 
 
 # Fetch and display key interest rates
+
+
+def fetch_key_interest_rates(api_key):
+    api_url = 'https://api.api-ninjas.com/v1/interestrate'
+    headers = {'X-Api-Key': api_key}
+    response = requests.get(api_url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        st.write(f"Error: {response.status_code}, {response.text}")
+        return None
+
+
+
+
 interest_rates_data = fetch_key_interest_rates(api_key)
 if interest_rates_data:
     st.subheader("Key Interest Rates")
