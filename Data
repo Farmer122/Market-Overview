@@ -20,11 +20,11 @@ def fetch_yahoo_finance_news():
 
     return headlines[:5]  # Return top 5 headlines
 
-# Fetch and display key interest rates
-def fetch_key_interest_rates(api_key):
+def fetch_key_interest_rates(api_key, country=None):  # Added country parameter
     api_url = 'https://api.api-ninjas.com/v1/interestrate'
     headers = {'X-Api-Key': api_key}
-    response = requests.get(api_url, headers=headers)
+    params = {'country': country} if country else {}  # Added this line
+    response = requests.get(api_url, headers=headers, params=params)  # Added params
 
     if response.status_code == 200:
         data = response.json()
@@ -66,14 +66,12 @@ st.title('Dynamic Yield Curves')
 options = ['US', 'UK', 'EU']
 country = st.selectbox('Select a country:', options)
 
-# Fetch and plot data
 if country:
-    data = fetch_key_interest_rates(country)
+    data = fetch_key_interest_rates(api_key, country)  # Pass country parameter
     if data:
         plot_yield_curve(data, country)
     else:
         st.write(f"Could not fetch data for {country}.")
-
 
 # Web App Title
 st.title("Dynamic Market Overview")
