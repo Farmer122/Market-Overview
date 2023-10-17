@@ -58,28 +58,8 @@ def fetch_key_equities():
     return data
 
 
-import matplotlib.pyplot as plt
-
-def plot_yield_curve(data):
-    tenors = []
-    rates = []
-    
-    for item in data['non_central_bank_rates']:
-        if "Euribor" in item['name']:  # Replace 'Euribor' with the appropriate identifier for the rates you're interested in.
-            tenors.append(item['name'].split("-")[-1].strip())  # Parsing to get only the '1 week', '1 month', etc.
-            rates.append(item['rate_pct'])
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(tenors, rates, marker='o')
-    plt.title('Yield Curve')
-    plt.xlabel('Tenor')
-    plt.ylabel('Interest Rate (%)')
-    plt.grid(True)
-    st.pyplot(plt)
-
 
 # Fetch and display key interest rates
-
 
 def fetch_key_interest_rates(api_key):
     api_url = 'https://api.api-ninjas.com/v1/interestrate'
@@ -97,6 +77,7 @@ def fetch_key_interest_rates(api_key):
 
 
 interest_rates_data = fetch_key_interest_rates(api_key)
+
 if interest_rates_data:
     st.subheader("Key Interest Rates")
     
@@ -117,20 +98,26 @@ if interest_rates_data:
 
 
 
-def fetch_key_interest_rates(api_key):
-    api_url = 'https://api.api-ninjas.com/v1/interestrate'
-    headers = {'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS': api_key}
-    response = requests.get(api_url, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        return data
-    else:
-        st.write(f"Error: {response.status_code}, {response.text}")
-        return None
-
-# Your Streamlit API Key (replace with your own)
 api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
+
+import matplotlib.pyplot as plt
+
+def plot_yield_curve(data):
+    tenors = []
+    rates = []
+    
+    for item in data['non_central_bank_rates']:
+        if "Euribor" in item['name']:  # Replace 'Euribor' with the appropriate identifier for the rates you're interested in.
+            tenors.append(item['name'].split("-")[-1].strip())  # Parsing to get only the '1 week', '1 month', etc.
+            rates.append(item['rate_pct'])
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(tenors, rates, marker='o')
+    plt.title('Yield Curve')
+    plt.xlabel('Tenor')
+    plt.ylabel('Interest Rate (%)')
+    plt.grid(True)
+    st.pyplot(plt)
 
 # Fetch and display key interest rates
 interest_rates_data = fetch_key_interest_rates(api_key)
