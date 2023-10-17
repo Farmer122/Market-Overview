@@ -5,7 +5,7 @@ from streamlit import components
 
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
-    url = "https://finance.yahoo.com/"
+    url = "https://uk.finance.yahoo.com/topic/news/"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -20,30 +20,138 @@ def fetch_yahoo_finance_news():
 # Web App Title
 st.title("Dynamic Market Overview")
 
+
 # Market News Headlines
-st.subheader("Market News Headlines")
+st.subheader("Top 10 Market News Headlines")
 headlines = fetch_yahoo_finance_news()
-for headline in headlines:
-    st.write(f"- {headline}")
 
-# Dynamic Yield Curve
-st.subheader("Dynamic Yield Curve")
-st.write("Dynamic Yield Curve chart will go here.")
-# Here you can use st.pyplot() to display a Matplotlib plot for yield curves
+# Create columns
+col1, col2 = st.columns(2)
 
-# Key Market Rates
-st.subheader("Key Market Rates")
-st.write("Key rates like SONIA, SOFR, and yields for GILTS, and UST will go here.")
-# You can use st.table() or st.dataframe() to display the key market rates
+# Loop through the headlines and display them in two columns
+for i in range(0, len(headlines), 2):
+    with col1:
+        st.write(f"{i+1}. {headlines[i]}")
+
+    # Check if there is an even number of headlines
+    if i+1 < len(headlines):
+        with col2:
+            st.write(f"{i+2}. {headlines[i+1]}")
+
+# Function to scrape key equity indices from Yahoo Finance
+def fetch_key_equities():
+    indices = ['^FTSE', '^GSPC', '^DJI', '^N225']
+    names = ['FTSE 100', 'S&P 500', 'Dow Jones', 'Nikkei 225']
+    data = []
+
+    for index, name in zip(indices, names):
+        url = f"https://finance.yahoo.com/quote/{index}"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        value = soup.find('span', {'data-reactid': '50'}).get_text()
+        data.append({
+            'Index': name,
+            'Value': value
+        })
+
+    return data
+
+
+import matplotlib.pyplot as plt
+
+def plot_yield_curve(data):
+    tenors = []
+    rates = []
+    
+    for item in data['non_central_bank_rates']:
+        if "Euribor" in item['name']:  # Replace 'Euribor' with the appropriate identifier for the rates you're interested in.
+            tenors.append(item['name'].split("-")[-1].strip())  # Parsing to get only the '1 week', '1 month', etc.
+            rates.append(item['rate_pct'])
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(tenors, rates, marker='o')
+    plt.title('Yield Curve')
+    plt.xlabel('Tenor')
+    plt.ylabel('Interest Rate (%)')
+    plt.grid(True)
+    st.pyplot(plt)
+
+
+# Fetch and display key interest rates
+interest_rates_data = fetch_key_interest_rates(api_key)
+if interest_rates_data:
+    st.subheader("Key Interest Rates")
+    
+    central_bank_rates = interest_rates_data.get('central_bank_rates', [])
+    non_central_bank_rates = interest_rates_data.get('non_central_bank_rates', [])
+    
+    if central_bank_rates:
+        st.write("### Central Bank Rates")
+        st.table(central_bank_rates)
+        
+    if non_central_bank_rates:
+        st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
+        st.table(non_central_bank_rates)
+        
+    # Add this line to plot the yield curve based on the fetched data
+    plot_yield_curve(interest_rates_data)
+
+
+
+
+def fetch_key_interest_rates(api_key):
+    api_url = 'https://api.api-ninjas.com/v1/interestrate'
+    headers = {'X-Api-Key': api_key}
+    response = requests.get(api_url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        st.write(f"Error: {response.status_code}, {response.text}")
+        return None
+
+# Your Streamlit API Key (replace with your own)
+api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
+
+# Fetch and display key interest rates
+interest_rates_data = fetch_key_interest_rates(api_key)
+
+if interest_rates_data:
+    st.subheader("Key Interest Rates")
+    
+    central_bank_rates = interest_rates_data.get('central_bank_rates', [])
+    non_central_bank_rates = interest_rates_data.get('non_central_bank_rates', [])
+    
+    if central_bank_rates:
+        st.write("### Central Bank Rates")
+        st.table(central_bank_rates)
+        
+    if non_central_bank_rates:
+        st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
+        st.table(non_central_bank_rates)
+else:
+    st.write("No data available for key interest rates.")
+
+
+
+
+
+
 
 # Key Equities Overview
 st.subheader("Key Equities Overview")
-st.write("Overview of key equities like FTSE 100, S&P 500, and Nikkei 225 will go here.")
-# Again, st.table() or st.dataframe() can be used to display this data
+equities = fetch_key_equities()
+if equities:
+    st.table(equities)
+else:
+    st.write("No data available for key equities.")
+
 
 # Economic Calendar
 st.subheader("Economic Calendar")
 iframe_code = '''
-<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=week&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe><div class="poweredBy" style="font-family: Arial, Helvetica, sans-serif;"><span style="font-size: 11px;color: #333333;text-decoration: none;">Real Time Economic Calendar provided by <a href="https://www.investing.com/" rel="nofollow" target="_blank" style="font-size: 11px;color: #06529D; font-weight: bold;" class="underline_link">Investing.com</a>.</span></div>
 '''
 components.v1.html(iframe_code, height=500)
