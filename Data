@@ -3,8 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 
-api_key = "P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS"
-
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://uk.finance.yahoo.com/topic/news/"
@@ -13,71 +11,55 @@ def fetch_yahoo_finance_news():
 
     headlines = []
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
-        if item:  # Check for None
+        if item:
             text = item.get_text()
             if text:
                 headlines.append(text)
+    return headlines[:5]
 
-    return headlines[:5]  # Return top 5 headlines
-
-def fetch_key_interest_rates(api_key, country=None):  # Added country parameter
-    api_url = 'https://api.api-ninjas.com/v1/interestrate'
-    headers = {'X-Api-Key': api_key}
-    params = {'country': country} if country else {}  # Added this line
-    response = requests.get(api_url, headers=headers, params=params)  # Added params
-
-    if response.status_code == 200:
-        data = response.json()
-        return data
-    else:
-        st.write(f"Error: {response.status_code}, {response.text}")
-        return None
+# Function to scrape yield data from Trading Economics
+def fetch_yield_data(country):
+    url = f"https://tradingeconomics.com/{country.lower()}/interest-rate"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    table = soup.find_all('table')[0] 
+    rows = table.find_all('tr')
+    
+    yield_data = {}
+    for row in rows[1:]:
+        cols = row.find_all('td')
+        if len(cols) >= 2:
+            bond = cols[0].text.strip()
+            yield_value = float(cols[1].text.strip())
+            yield_data[bond] = yield_value
+    return yield_data
 
 # Function to plot yield curves
-def plot_yield_curve(data, country):
-    tenors = []
-    rates = []
-    
-    if country == 'US':
-        identifiers = ["SOFR", "UST 2y", "UST 5y", "UST 10y", "UST 30y"]
-    elif country == 'UK':
-        identifiers = ["SONIA", "GILT 2y", "GILT 5y", "GILT 10y", "GILT 30y"]
-    elif country == 'EU':
-        identifiers = ["Euribor", "Bund 2y", "Bund 5y", "Bund 10y", "Bund 30y"]
-    
-    for item in data['non_central_bank_rates']:
-        if any(identifier in item['name'] for identifier in identifiers):
-            tenors.append(item['name'].split("-")[-1].strip())
-            rates.append(item['rate_pct'])
+def plot_yield_curve(yield_data, country):
+    bonds = list(yield_data.keys())
+    yields = list(yield_data.values())
+    plt.figure(figsize=(10, 5))
+    plt.plot(bonds, yields, marker='o')
+    plt.title(f'{country} Yield Curve')
+    plt.xlabel('Bond')
+    plt.ylabel('Yield (%)')
+    plt.grid(True)
+    st.pyplot()
 
-    if tenors and rates:
-        plt.figure(figsize=(10, 6))
-        plt.plot(tenors, rates, marker='o')
-        plt.title(f'{country} Yield Curve')
-        plt.xlabel('Tenor')
-        plt.ylabel('Interest Rate (%)')
-        plt.grid(True)
-        st.pyplot()
-        st.write(f"No yield curve data available for {region}.")
+st.title('Dynamic Market Overview')
 
-st.title('Dynamic Yield Curves')
+# Dropdown for selecting the country for yield curve
+country = st.selectbox('Select a country for Yield Curve:', ['US', 'UK'])
 
-# Dropdown for selecting the country
-options = ['US', 'UK', 'EU']
-country = st.selectbox('Select a country:', options)
-
-if country:
-    data = fetch_key_interest_rates(api_key, country)  # Pass country parameter
-    if data:
-        plot_yield_curve(data, country)
-    else:
-        st.write(f"Could not fetch data for {country}.")
-
-# Web App Title
-st.title("Dynamic Market Overview")
+# Fetch and plot yield curve
+yield_data = fetch_yield_data(country)
+if yield_data:
+    plot_yield_curve(yield_data, country)
+else:
+    st.write(f"No yield data available for {country}.")
 
 # Market News Headlines
-st.subheader("Top 10 Market News Headlines")
+st.subheader("Top 5 Market News Headlines")
 headlines = fetch_yahoo_finance_news()
 if headlines:
     col1, col2 = st.columns(2)
@@ -87,24 +69,6 @@ if headlines:
         if i + 1 < len(headlines):
             with col2:
                 st.write(f"{i+2}. {headlines[i+1]}")
-
-# Fetch and display key interest rates
-interest_rates_data = fetch_key_interest_rates(api_key)
-if interest_rates_data:
-    st.subheader("Key Interest Rates")
-    central_bank_rates = interest_rates_data.get('central_bank_rates', [])
-    non_central_bank_rates = interest_rates_data.get('non_central_bank_rates', [])
-
-    if central_bank_rates:
-        st.write("### Central Bank Rates")
-        st.table(central_bank_rates)
-
-    if non_central_bank_rates:
-        st.write("### Non-Central Bank Rates (e.g., LIBOR, EURIBOR, etc.)")
-        st.table(non_central_bank_rates)
-
-
-
 
 # Economic Calendar
 st.subheader("Economic Calendar")
