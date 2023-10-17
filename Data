@@ -29,12 +29,22 @@ def fetch_key_equities():
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        value = soup.find('span', {'data-reactid': '50'}).get_text()
-        data.append({
-            'Index': name,
-            'Value': value
-        })
+        # Using a more general tag and class name to find the element
+        value_element = soup.find('span', {'class': 'Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)'})
+        if value_element:
+            value = value_element.get_text()
+            data.append({
+                'Index': name,
+                'Value': value
+            })
+        else:
+            data.append({
+                'Index': name,
+                'Value': 'N/A'
+            })
+
     return data
+
 
 # Function to plot yield curves
 def plot_yield_curve(data, country):
