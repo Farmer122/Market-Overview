@@ -2,50 +2,45 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
-import pandas as pd  
+import pandas as pd
 
-# Function to fetch news from Yahoo Finance
+
 def fetch_yahoo_finance_news():
+    """Fetch top 5 news headlines from Yahoo Finance."""
     url = "https://uk.finance.yahoo.com/topic/news/"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    headlines = []
-    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
-        if item:
-            text = item.get_text()
-            if text:
-                headlines.append(text)
+    headlines = [item.get_text() for item in soup.find_all('h3', class_='Mb(5px)') if item and item.get_text()]
     return headlines[:5]
 
-def fetch_key_equities():
-    indices = ['^FTSE', '^GSPC', '^DJI', '^N225']
-    names = ['FTSE 100', 'S&P 500', 'Dow Jones', 'Nikkei 225']
-    data = []
 
-    for index, name in zip(indices, names):
-        url = f"https://finance.yahoo.com/quote/{index}"
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        value = soup.find('span', {'data-reactid': '50'}).get_text()
-        data.append({
-            'Index': name,
-            'Value': value
-        })
+def fetch_bond_data(country_code):
+    """Fetch bond data from Financial Times based on country code."""
+    url = f"https://markets.ft.com/data/bonds?country={country_code}"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    table = soup.find('table', class_='mod-ui-table mod-yields-app_mod mod-module--trans')
+    rows = table.find_all('tr')
+    data = [{'Tenor': row.find_all('td')[0].text.strip(),
+             'Yield': float(row.find_all('td')[1].text.replace('%', '').strip())} for row in rows[1:]]
 
     return data
 
-# Key Equities Overview
-st.subheader("Key Equities Overview")
-equities = fetch_key_equities()
-if equities:
-    st.table(equities)
-else:
-    st.write("No data available for key equities.")
+
+def plot_yield_curve(data, country):
+    """Plot and display the yield curve for the selected country."""
+    tenors, rates = [row['Tenor'] for row in data], [row['Yield'] for row in data]
+    plt.figure(figsize=(10, 6))
+    plt.plot(tenors, rates, marker='o')
+    plt.title(f'{country} Yield Curve')
+    plt.xlabel('Tenor')
+    plt.ylabel('Yield (%)')
+    plt.grid(True)
+    st.pyplot()
 
 
-# Market News Headlines
+# Displaying Top 10 Market News Headlines
 st.subheader("Top 10 Market News Headlines")
 headlines = fetch_yahoo_finance_news()
 if headlines:
@@ -57,55 +52,13 @@ if headlines:
             with col2:
                 st.write(f"{i+2}. {headlines[i+1]}")
 
-
-
-def fetch_bond_data(country_code):
-    url = f"https://markets.ft.com/data/bonds?country={country_code}"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    table = soup.find('table', {'class': 'mod-ui-table mod-ui-table--colored'})
-    rows = table.find_all('tr')
-    data = []
-
-    for row in rows[1:]:  # Skip the header row
-        cols = row.find_all('td')
-        tenor = cols[0].text.strip()
-        yield_value = float(cols[1].text.replace('%', '').strip())
-        data.append({'Tenor': tenor, 'Yield': yield_value})
-
-    return data
-
-def plot_yield_curve(data, country):
-    tenors = [row['Tenor'] for row in data]
-    rates = [row['Yield'] for row in data]
-
-    plt.figure(figsize=(10, 6))
-    plt.plot(tenors, rates, marker='o')
-    plt.title(f'{country} Yield Curve')
-    plt.xlabel('Tenor')
-    plt.ylabel('Yield (%)')
-    plt.grid(True)
-    st.pyplot()
-
-
-
-# Dropdown for selecting the country for yield curve
-country_codes = {
-    'United States': 'US',
-    'United Kingdom': 'GB',
-    'Japan': 'JP',
-    'Eurozone': 'EZ'
-}
-
-options = list(country_codes.keys())
-selected_country = st.selectbox('Select a country for yield curve:', options)
+# Dropdown for selecting country for yield curve
+country_codes = {'United States': 'US', 'United Kingdom': 'GB', 'Japan': 'JP', 'Eurozone': 'EZ'}
+selected_country = st.selectbox('Select a country for yield curve:', list(country_codes.keys()))
 
 # Fetch and plot yield curve
 bond_data = fetch_bond_data(country_codes[selected_country])
-if bond_data:
-    plot_yield_curve(bond_data, selected_country)
-else:
-    st.write(f"Could not fetch data for {selected_country}.")
+plot_yield_curve(bond_data, selected_country) if bond_data else st.write(f"Failed to fetch data for {selected_country}.")
 
 
 # Economic Calendar
