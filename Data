@@ -2,8 +2,10 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
-import pandas as pd
+import quandl
+from datetime import date, timedelta
 
+quandl.ApiConfig.api_key = "CMAmvGguyaxC5xiz2mq3"
 
 def fetch_yahoo_finance_news():
     """Fetch top 5 news headlines from Yahoo Finance."""
@@ -14,51 +16,63 @@ def fetch_yahoo_finance_news():
     headlines = [item.get_text() for item in soup.find_all('h3', class_='Mb(5px)') if item and item.get_text()]
     return headlines[:5]
 
+# Streamlit App
+st.title("Financial Dashboard")
 
-def fetch_bond_data(country_code):
-    """Fetch bond data from Financial Times based on country code."""
-    url = f"https://markets.ft.com/data/bonds?country={country_code}"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    table = soup.find('table', class_='mod-ui-table mod-yields-app_mod mod-module--trans')
-    rows = table.find_all('tr')
-    data = [{'Tenor': row.find_all('td')[0].text.strip(),
-             'Yield': float(row.find_all('td')[1].text.replace('%', '').strip())} for row in rows[1:]]
+# Display News
+st.subheader("Top 5 Financial News")
+news = fetch_financial_news()
+for i, article in enumerate(news):
+    st.write(f"{i+1}. [{article['text']}]({article['link']})")
 
-    return data
+# Widgets
+country = st.selectbox('Select Country for Yield Curve', ('UK', 'US', 'Eurozone'))
+indicator = st.selectbox('Select Economic Indicator', ('Inflation Rate', 'Interest Rate'))
 
+# Dynamic Dates
+end_date = date.today()
+start_date = end_date - timedelta(days=30)  # Last 30 days
 
-def plot_yield_curve(data, country):
-    """Plot and display the yield curve for the selected country."""
-    tenors, rates = [row['Tenor'] for row in data], [row['Yield'] for row in data]
-    plt.figure(figsize=(10, 6))
-    plt.plot(tenors, rates, marker='o')
-    plt.title(f'{country} Yield Curve')
-    plt.xlabel('Tenor')
-    plt.ylabel('Yield (%)')
-    plt.grid(True)
-    st.pyplot()
+# Fetch and Plot Yield Curve Data
+if country == 'UK':
+    data = quandl.get("BOE/IUDSNPY", start_date=start_date, end_date=end_date)
+    if not data.empty:
+        plt.plot(data)
+        plt.title('UK Yield Curve')
+        plt.xlabel('Date')
+        plt.ylabel('Yield (%)')
+        st.pyplot(plt)
 
+elif country == 'US':
+    data = quandl.get("USTREASURY/YIELD", start_date=start_date, end_date=end_date)
+    if not data.empty:
+        plt.plot(data)
+        plt.title('US Yield Curve')
+        plt.xlabel('Date')
+        plt.ylabel('Yield (%)')
+        st.pyplot(plt)
 
-# Displaying Top 10 Market News Headlines
-st.subheader("Top 10 Market News Headlines")
-headlines = fetch_yahoo_finance_news()
-if headlines:
-    col1, col2 = st.columns(2)
-    for i in range(0, len(headlines), 2):
-        with col1:
-            st.write(f"{i+1}. {headlines[i]}")
-        if i + 1 < len(headlines):
-            with col2:
-                st.write(f"{i+2}. {headlines[i+1]}")
+elif country == 'Eurozone':
+    data = quandl.get("ECB/EONIA", start_date=start_date, end_date=end_date)
+    if not data.empty:
+        plt.plot(data)
+        plt.title('Eurozone Yield Curve')
+        plt.xlabel('Date')
+        plt.ylabel('Yield (%)')
+        st.pyplot(plt)
 
-# Dropdown for selecting country for yield curve
-country_codes = {'United States': 'US', 'United Kingdom': 'GB', 'Japan': 'JP', 'Eurozone': 'EZ'}
-selected_country = st.selectbox('Select a country for yield curve:', list(country_codes.keys()))
-
-# Fetch and plot yield curve
-bond_data = fetch_bond_data(country_codes[selected_country])
-plot_yield_curve(bond_data, selected_country) if bond_data else st.write(f"Failed to fetch data for {selected_country}.")
+# Display Economic Indicators
+if indicator == 'Inflation Rate':
+    uk_data = quandl.get("RATEINF/INFLATION_GBR", start_date=start_date, end_date=end_date)
+    us_data = quandl.get("RATEINF/INFLATION_USA", start_date=start_date, end_date=end_date)
+    jp_data = quandl.get("RATEINF/INFLATION_JPN", start_date=start_date, end_date=end_date)
+    
+    if not uk_data.empty:
+        st.write(f"UK: Inflation rate {uk_data['Value'].iloc[-1]}%")
+    if not us_data.empty:
+        st.write(f"US: Inflation rate {us_data['Value'].iloc[-1]}%")
+    if not jp_data.empty:
+        st.write(f"Japan: Inflation rate {jp_data['Value'].iloc[-1]}%")
 
 
 # Economic Calendar
