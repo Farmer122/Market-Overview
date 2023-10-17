@@ -22,6 +22,13 @@ def fetch_yahoo_finance_news():
 # Initialize FRED API
 fred = Fred(api_key="5da565b90c3bd82a6514a1b3322a43c8")
 
+us_maturities = ['1mo', '3mo', '6mo', '1yr', '2yr', '3yr', '5yr', '7yr', '10yr', '20yr', '30yr']
+us_yield_data = {}
+for mat in us_maturities:
+    series_id = f'GS{mat.upper()}'
+    us_yield_data[mat] = fred.get_series(series_id).dropna()
+
+
 # Read UK yield data from CSV file
 uk_yield_data = pd.read_csv("/path/to/your/csv/file/UK_fwd_curve_data_updated.csv")
 # Clean the data by skipping unnecessary rows and setting appropriate headers
@@ -48,21 +55,21 @@ headlines = fetch_yahoo_finance_news()
 for headline in headlines:
     st.write(f"- {headline}")
 
-# US Yield Curve
-show_us_yield = st.checkbox('Show US Yield Curve')
-if show_us_yield:
-    us_yield_data = fred.get_series('GS10')  # 10-year Treasury Rate
-    plt.plot(us_yield_data.index, us_yield_data.values)
-    plt.title('US 10-Year Treasury Yield')
-    plt.xlabel('Date')
+yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
+
+if yield_curve_choice == 'US':
+    # US Yield Curve
+    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data['1mo'].index)
+    selected_date_us_yield = [us_yield_data[mat].loc[selected_date_us] if selected_date_us in us_yield_data[mat].index else None for mat in us_maturities]
+    plt.plot(us_maturities, selected_date_us_yield)
+    plt.title('US Yield Curve')
+    plt.xlabel('Maturity (Months/Years)')
     plt.ylabel('Yield (%)')
     st.pyplot()
-
-# UK Yield Curve
-show_uk_yield = st.checkbox('Show UK Yield Curve')
-if show_uk_yield:
-    selected_date = st.selectbox('Select Date for UK Yield Curve', uk_yield_data_clean.index)
-    plt.plot(uk_yield_data.columns, uk_yield_data_clean.loc[selected_date])
+elif yield_curve_choice == 'UK':
+    # UK Yield Curve
+    selected_date_uk = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
+    plt.plot(uk_yield_data.columns, uk_yield_data.loc[selected_date_uk])
     plt.title('UK Yield Curve')
     plt.xlabel('Maturity (Years)')
     plt.ylabel('Yield (%)')
