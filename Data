@@ -15,14 +15,6 @@ def fetch_inflation(country, api_key):
     else:
         return None
 
-# Function to fetch US yield curve data from FRED
-def fetch_us_yield(fred_api_key):
-    url = f"https://api.stlouisfed.org/fred/series/observations?series_id=GS10&api_key={fred_api_key}&file_type=json"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()['observations']
-        return pd.DataFrame(data)
-
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://finance.yahoo.com/"
@@ -38,7 +30,7 @@ def fetch_yahoo_finance_news():
     return headlines[:5]
 
 # Read UK yield data from Excel file
-uk_yield_data = pd.read_excel('/mnt/data/GLC Nominal daily data current month.xlsx', sheet_name='1. fwds, short end', skiprows=4)
+uk_yield_data = pd.read_excel('/path/to/your/excel/file/GLC Nominal daily data current month.xlsx', sheet_name='2. fwd curve', skiprows=4)
 uk_yield_data = uk_yield_data.rename(columns={uk_yield_data.columns[0]: 'Date'}).dropna(subset=['Date'])
 uk_yield_data.set_index('Date', inplace=True)
 
@@ -62,21 +54,10 @@ st.write(f"UK Inflation: {uk_inflation['yearly_rate_pct']}%")
 # Section: Yield Curves
 st.subheader("Yield Curves")
 
-# Fetch and plot US Yield Curve
-fred_api_key = '5da565b90c3bd82a6514a1b3322a43c8'
-us_yield_data = fetch_us_yield(fred_api_key)
-show_us_yield = st.checkbox('Show US Yield Curve')
-if show_us_yield:
-    plt.plot(us_yield_data['date'], us_yield_data['value'])
-    plt.title('US Yield Curve')
-    plt.xlabel('Date')
-    plt.ylabel('Yield')
-    st.pyplot()
-
 # Plot UK Yield Curve
 show_uk_yield = st.checkbox('Show UK Yield Curve')
 if show_uk_yield:
-    plt.plot(uk_yield_data.index, uk_yield_data['Unnamed: 4'])
+    plt.plot(uk_yield_data.index, uk_yield_data['Unnamed: 1'])  # Replace 'Unnamed: 1' with the correct column for spot rates
     plt.title('UK Yield Curve')
     plt.xlabel('Date')
     plt.ylabel('Yield')
