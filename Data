@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
 from textblob import TextBlob
+import plotly.express as px
 
 # Function to scrape news from Yahoo Finance and perform sentiment analysis
 def fetch_yahoo_finance_news():
@@ -12,13 +13,12 @@ def fetch_yahoo_finance_news():
     soup = BeautifulSoup(response.content, 'html.parser')
     headlines = {}
     
-    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
+    for item in soup.find_all('h3', {'class': 'Mb(5px)'}):
         text = item.get_text()
         link = item.a['href']
         blob = TextBlob(text)
         sentiment = blob.sentiment.polarity
-        
-        if text and link:
+        if text:
             headlines[text] = {
                 'link': f"https://finance.yahoo.com{link}",
                 'sentiment': sentiment
@@ -30,25 +30,8 @@ st.title("Dynamic Market Overview")
 
 # Market News Headlines
 st.subheader("Market News Headlines")
-
 headlines = fetch_yahoo_finance_news()
 headline_list = list(headlines.keys())
-
-# Display headlines with sentiment color
-for headline in headline_list:
-    sentiment = headlines[headline]['sentiment']
-    if sentiment > 0.2:
-        st.markdown(f"<p style='background-color:lightgreen;'>{headline}</p>", unsafe_allow_html=True)
-    elif sentiment < 0:
-        st.markdown(f"<p style='background-color:lightcoral;'>{headline}</p>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<p style='background-color:white;'>{headline}</p>", unsafe_allow_html=True)
-
-# Sentiment legend
-st.subheader("Sentiment Analysis Legend")
-st.markdown("<p style='background-color:lightgreen;'>Positive Sentiment</p>", unsafe_allow_html=True)
-st.markdown("<p style='background-color:lightcoral;'>Negative Sentiment</p>", unsafe_allow_html=True)
-st.markdown("<p style='background-color:white;'>Neutral Sentiment</p>", unsafe_allow_html=True)
 
 # Dynamic News Summary
 selected_headline = st.selectbox('Select a headline for summary', headline_list)
@@ -56,6 +39,21 @@ if selected_headline:
     st.write(f"Summary for: {selected_headline}")
     summary_url = headlines[selected_headline]['link']
     st.write(f"For more details, [click here]({summary_url})")
+
+
+uk_yield_data = pd.read_csv(r"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\GLC Real DATA.csv")
+us_yield_data = pd.read_csv(r"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\US YIELD DATA.csv")
+
+# Interactive Yield Curve Plots
+st.subheader("Yield Curve")
+yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
+
+if yield_curve_choice == 'UK':
+    fig_uk = px.line(uk_yield_data, x='Maturity', y='Rates', title='UK Yield Curve')
+    st.plotly_chart(fig_uk)
+elif yield_curve_choice == 'US':
+    fig_us = px.line(us_yield_data, x='Maturity', y='Rates', title='US Yield Curve')
+    st.plotly_chart(fig_us)
 
 
 
@@ -72,23 +70,6 @@ headlines = fetch_yahoo_finance_news()
 for headline in headlines:
     st.write(f"- {headline}")
 
-yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
-
-if yield_curve_choice == 'US':
-    # US Yield Curve
-    plt.plot(us_yield_data['Date'],us_yield_data['Rates'] )
-    plt.title('US Yield Curve')
-    plt.xlabel('Maturity (Months/Years)')
-    plt.ylabel('Yield (%)')
-    st.pyplot()
-
-elif yield_curve_choice == 'UK':
-    # UK Yield Curve
-    plt.plot(uk_yield_data['Maturity'],uk_yield_data['Rates'] )
-    plt.title('UK Yield Curve')
-    plt.xlabel('Maturity (Years)')
-    plt.ylabel('Yield (%)')
-    st.pyplot()
 
 # Inflation Rates
 show_inflation = st.selectbox('Show Inflation Rates', ['UK', 'US', 'JP'])
