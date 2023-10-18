@@ -4,17 +4,62 @@ import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
 
-# Function to scrape news from Yahoo Finance
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+# Function to scrape news from Yahoo Finance and perform sentiment analysis
 def fetch_yahoo_finance_news():
     url = "https://finance.yahoo.com/"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    headlines = []
+    headlines = {}
+    sid = SentimentIntensityAnalyzer()
+    
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
         text = item.get_text()
-        if text:
-            headlines.append(text)
-    return headlines[:5]  # Return top 5 headlines
+        link = item.a['href']
+        sentiment = sid.polarity_scores(text)['compound']
+        
+        if text and link:
+            headlines[text] = {
+                'link': f"https://finance.yahoo.com{link}",
+                'sentiment': sentiment
+            }
+    return headlines
+
+# Web App Title
+st.title("Dynamic Market Overview")
+
+# Market News Headlines
+st.subheader("Market News Headlines")
+
+headlines = fetch_yahoo_finance_news()
+headline_list = list(headlines.keys())
+
+# Display headlines with sentiment color
+for headline in headline_list:
+    sentiment = headlines[headline]['sentiment']
+    if sentiment > 0.2:
+        st.markdown(f"<p style='background-color:lightgreen;'>{headline}</p>", unsafe_allow_html=True)
+    elif sentiment < 0:
+        st.markdown(f"<p style='background-color:lightcoral;'>{headline}</p>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<p style='background-color:white;'>{headline}</p>", unsafe_allow_html=True)
+
+# Sentiment legend
+st.subheader("Sentiment Analysis Legend")
+st.markdown("<p style='background-color:lightgreen;'>Positive Sentiment</p>", unsafe_allow_html=True)
+st.markdown("<p style='background-color:lightcoral;'>Negative Sentiment</p>", unsafe_allow_html=True)
+st.markdown("<p style='background-color:white;'>Neutral Sentiment</p>", unsafe_allow_html=True)
+
+# Dynamic News Summary
+selected_headline = st.selectbox('Select a headline for summary', headline_list)
+if selected_headline:
+    st.write(f"Summary for: {selected_headline}")
+    summary_url = headlines[selected_headline]['link']
+    st.write(f"For more details, [click here]({summary_url})")
+
+# ... (the rest of your code remains the same)
+
 
 # Fetch latest yield curve data from U.S. Department of the Treasury
 url = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202310"
