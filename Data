@@ -7,7 +7,7 @@ from textblob import TextBlob
 
 # Function to scrape news from Yahoo Finance and perform sentiment analysis
 def fetch_yahoo_finance_news():
-    url = "https://finance.yahoo.com/"
+    url = "https://uk.finance.yahoo.com/topic/news"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     headlines = {}
@@ -57,61 +57,41 @@ if selected_headline:
     summary_url = headlines[selected_headline]['link']
     st.write(f"For more details, [click here]({summary_url})")
 
-# ... (the rest of your code remains the same)
 
 
-# Fetch latest yield curve data from U.S. Department of the Treasury
-url = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202310"
-us_yield_data = pd.read_html(url)[1]
-us_yield_data = us_yield_data.dropna().reset_index(drop=True)
-us_yield_data.columns = ["Date", "1 Mo", "2 Mo", "3 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
-us_yield_data["Date"] = pd.to_datetime(us_yield_data["Date"])
-us_yield_data.set_index("Date", inplace=True)
-for col in us_yield_data.columns:
-    us_yield_data[col] = pd.to_numeric(us_yield_data[col], errors='coerce')
-
-# Fetch UK yield data from uploaded CSV
-uk_yield_data = pd.read_csv('/mnt/data/GLG Data.csv', index_col=0)
+# Read UK yield data from CSV file
+uk_yield_data = pd.read_csv(r"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\GLC Real DATA.csv")
+us_yield_data = pd.read_csv(r"\\mfil.local\proddfs\appsense\profiles\users\N354792\Desktop\US YIELD DATA.csv")
 
 # Web App Title
 st.title("Dynamic Market Overview")
 
 # Market News Headlines
-st.subheader("Market News Headlines")
+st.subheader("Top Yahoo Finance UK Market News Headlines")
 headlines = fetch_yahoo_finance_news()
 for headline in headlines:
     st.write(f"- {headline}")
 
-# Yield Curve Dropdown
 yield_curve_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
 
 if yield_curve_choice == 'US':
     # US Yield Curve
-    selected_date_us = st.selectbox('Select Date for US Yield Curve', us_yield_data.index)
-    selected_date_us_yield = us_yield_data.loc[selected_date_us]
-    plt.plot(selected_date_us_yield.index, selected_date_us_yield.values)
+    plt.plot(us_yield_data['Date'],us_yield_data['Rates'] )
     plt.title('US Yield Curve')
-    plt.xlabel('Maturity')
+    plt.xlabel('Maturity (Months/Years)')
     plt.ylabel('Yield (%)')
     st.pyplot()
+
 elif yield_curve_choice == 'UK':
     # UK Yield Curve
-    selected_date_uk = st.selectbox('Select Date for UK Yield Curve', uk_yield_data.index)
-    plt.plot(uk_yield_data.columns, uk_yield_data.loc[selected_date_uk])
+    plt.plot(uk_yield_data['Maturity'],uk_yield_data['Rates'] )
     plt.title('UK Yield Curve')
     plt.xlabel('Maturity (Years)')
     plt.ylabel('Yield (%)')
     st.pyplot()
 
-
-st.subheader("Economic Calendar")
-iframe_code = '''
-<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
-'''
-st.components.v1.html(iframe_code, height=500)
-
 # Inflation Rates
-show_inflation = st.selectbox('Show Inflation Rates', ['UK', 'US'])
+show_inflation = st.selectbox('Show Inflation Rates', ['UK', 'US', 'JP'])
 if show_inflation == 'US':
     api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United States")
     response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
@@ -128,7 +108,19 @@ elif show_inflation == 'UK':  # Fixed the comparison operator here
         st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
     else:
         st.write("Error fetching inflation data.")
+elif show_inflation == 'JP':  # Fixed the comparison operator here
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("Japan")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
+    else:
+        st.write("Error fetching inflation data.")
 
 
 
-
+st.subheader("Economic Calendar")
+iframe_code = '''
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
+'''
+st.components.v1.html(iframe_code, height=500)
