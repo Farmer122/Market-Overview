@@ -3,10 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import nltk
-nltk.download('vader_lexicon')
-
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from textblob import TextBlob
 
 # Function to scrape news from Yahoo Finance and perform sentiment analysis
 def fetch_yahoo_finance_news():
@@ -14,12 +11,12 @@ def fetch_yahoo_finance_news():
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     headlines = {}
-    sid = SentimentIntensityAnalyzer()
     
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
         text = item.get_text()
         link = item.a['href']
-        sentiment = sid.polarity_scores(text)['compound']
+        blob = TextBlob(text)
+        sentiment = blob.sentiment.polarity
         
         if text and link:
             headlines[text] = {
