@@ -1,61 +1,31 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import requests
-from bs4 import BeautifulSoup
-from textblob import TextBlob
+import spacy
 
-# Function to scrape news from Yahoo Finance and perform sentiment analysis
-def fetch_yahoo_finance_news():
-    url = "https://uk.finance.yahoo.com/topic/news"
+nlp = spacy.load("en_core_web_sm")
+
+def summarize_text(text):
+    doc = nlp(text)
+    sentences = [sentence.orth_ for sentence in doc.sents]
+    return ' '.join(sentences[:3])  # Return the first 3 sentences as a summary
+
+# Fetch the complete article text based on the URL (this is a placeholder; you'll need to implement this)
+def fetch_article_text(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    headlines = {}
-    
-    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
-        text = item.get_text()
-        link = item.a['href']
-        blob = TextBlob(text)
-        sentiment = blob.sentiment.polarity
-        
-        if text and link:
-            headlines[text] = {
-                'link': f"https://finance.yahoo.com{link}",
-                'sentiment': sentiment
-            }
-    return headlines
+    paragraphs = soup.find_all('p')
+    article_text = ' '.join([para.text for para in paragraphs])
+    return article_text
 
-# Web App Title
-st.title("Dynamic Market Overview")
-
-# Market News Headlines
-st.subheader("Market News Headlines")
-
-headlines = fetch_yahoo_finance_news()
-headline_list = list(headlines.keys())
-
-# Create a 2x5 table for headlines with sentiment color
-col1, col2 = st.beta_columns(2)
-with col1:
-    for headline in headline_list[:5]:
-        sentiment = headlines[headline]['sentiment']
-        st.markdown(f"<p style='background-color:{'lightgreen' if sentiment > 0.2 else 'lightcoral' if sentiment < 0 else 'white'};'>{headline}</p>", unsafe_allow_html=True)
-with col2:
-    for headline in headline_list[5:10]:
-        sentiment = headlines[headline]['sentiment']
-        st.markdown(f"<p style='background-color:{'lightgreen' if sentiment > 0.2 else 'lightcoral' if sentiment < 0 else 'white'};'>{headline}</p>", unsafe_allow_html=True)
-
-# Sentiment legend
-st.subheader("Sentiment Analysis Legend")
-st.markdown("<p style='background-color:lightgreen;'>Positive Sentiment</p>", unsafe_allow_html=True)
-st.markdown("<p style='background-color:lightcoral;'>Negative Sentiment</p>", unsafe_allow_html=True)
-st.markdown("<p style='background-color:white;'>Neutral Sentiment</p>", unsafe_allow_html=True)
+# ... existing code ...
 
 # Dynamic News Summary
-selected_headline = st.selectbox('Select a headline for summary', headline_list)
+st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
+selected_headline = st.selectbox('', headline_list)
 if selected_headline:
     st.write(f"Summary for: {selected_headline}")
     summary_url = headlines[selected_headline]['link']
+    full_article_text = fetch_article_text(summary_url)
+    summary = summarize_text(full_article_text)
+    st.write(f"Summary: {summary}")
     st.write(f"For more details, [click here]({summary_url})")
 
 
