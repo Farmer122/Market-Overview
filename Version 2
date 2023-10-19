@@ -1,1 +1,266 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import requests
+from bs4 import BeautifulSoup
+from textblob import TextBlob
+import spacy
+nlp = spacy.load("en_core_web_sm")
 
+# Function to scrape news from Yahoo Finance and perform sentiment analysis
+def fetch_yahoo_finance_news():
+    url = "https://uk.finance.yahoo.com/topic/news"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    headlines = {}
+    
+    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
+        text = item.get_text()
+        link = item.a['href']
+        blob = TextBlob(text)
+        sentiment = blob.sentiment.polarity
+        
+        if text and link:
+            headlines[text] = {
+                'link': f"https://finance.yahoo.com{link}",
+                'sentiment': sentiment
+            }
+    return headlines
+
+# Web App Title
+st.title("Jamal - Dynamic Market Overview")
+
+# Market News Headlines
+st.subheader("Market News Headlines")
+
+headlines = fetch_yahoo_finance_news()
+headline_list = list(headlines.keys())
+
+# Create a 2x5 table for headlines with sentiment color
+cols = st.columns(2)
+with cols[0]:
+    for headline in headline_list[:5]:
+        sentiment = headlines[headline]['sentiment']
+        st.markdown(f"<p style='background-color:{'lightgreen' if sentiment > 0.2 else 'lightcoral' if sentiment < 0 else 'white'};'>{headline}</p>", unsafe_allow_html=True)
+with cols[1]:
+    for headline in headline_list[5:10]:
+        sentiment = headlines[headline]['sentiment']
+        st.markdown(f"<p style='background-color:{'lightgreen' if sentiment > 0.2 else 'lightcoral' if sentiment < 0 else 'white'};'>{headline}</p>", unsafe_allow_html=True)
+
+# Sentiment legend
+st.subheader("Sentiment Analysis Legend")
+st.markdown("<p style='background-color:lightgreen;'>Positive Sentiment</p>", unsafe_allow_html=True)
+st.markdown("<p style='background-color:lightcoral;'>Negative Sentiment</p>", unsafe_allow_html=True)
+st.markdown("<p style='background-color:white;'>Neutral Sentiment</p>", unsafe_allow_html=True)
+
+
+
+
+def summarize_text(text):
+    doc = nlp(text)
+    sentences = [sentence.orth_ for sentence in doc.sents]
+    return ' '.join(sentences[:3])  # Return the first 3 sentences as a summary
+
+# Fetch the complete article text based on the URL (this is a placeholder; you'll need to implement this)
+def fetch_article_text(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    paragraphs = soup.find_all('p')
+    article_text = ' '.join([para.text for para in paragraphs])
+    return article_text
+
+
+
+# Dynamic News Summary
+st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
+selected_headline = st.selectbox('', headline_list)
+if selected_headline:
+    st.write(f"Summary for: {selected_headline}")
+    summary_url = headlines[selected_headline]['link']
+    full_article_text = fetch_article_text(summary_url)
+    summary = summarize_text(full_article_text)
+    st.write(f"Summary: {summary}")
+    st.write(f"For more details, [click here]({summary_url})")
+
+
+
+xapi = 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'
+
+st.subheader('Exchange rate data')
+
+api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_EUR'
+response = requests.get(api_url, headers={'X-Api-Key': xapi})
+if response.status_code == requests.codes.ok:
+    st.write(response.text)
+else:
+    print("Error:", response.status_code, response.text)
+
+api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_JPY'
+response = requests.get(api_url, headers={'X-Api-Key': xapi})
+if response.status_code == requests.codes.ok:
+    st.write(response.text)
+else:
+    print("Error:", response.status_code, response.text)
+
+api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_GBP'
+response = requests.get(api_url, headers={'X-Api-Key': xapi})
+if response.status_code == requests.codes.ok:
+    st.write(response.text)
+else:
+    print("Error:", response.status_code, response.text)
+
+
+
+
+
+def fetch_yield_data(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    table = soup.find('table', {'class': 'BasicTable-table'})
+    
+    maturities = []
+    yields = []
+    changes = []
+    
+    for row in table.find_all('tr')[1:]:
+        cols = row.find_all('td')
+        
+        maturity = cols[0].text.strip()
+        yield_value = float(cols[1].text.strip())
+        change = float(cols[2].text.split()[0].replace('+', '').replace('-', ''))
+        
+        maturities.append(maturity)
+        yields.append(yield_value)
+        changes.append(change)
+        
+    df = pd.DataFrame({
+        'Maturity': maturities,
+        'Yield': yields,
+        'Change': changes
+    })
+    
+    return df
+
+# URLs for different countries' bonds
+urls = {
+    'US': 'https://www.cnbc.com/us-treasurys/',
+    'UK': 'https://www.cnbc.com/uk-government-bonds/'
+}
+
+# Fetch yield data
+yield_choice = st.selectbox('Select Yield Curve', ['UK', 'US'])
+yield_data = fetch_yield_data(urls[yield_choice])
+
+# Plot the yield curve
+fig = px.line(yield_data, x='Maturity', y='Yield', title=f'{yield_choice} Yield Curve')
+
+# Add a bar chart layer for the % change at each tenor
+fig.add_bar(x=yield_data['Maturity'], y=yield_data['Change'], name='Change (%)')
+
+# Show the plot
+st.plotly_chart(fig)
+This code fetches bond yield data from the CNBC website and plots it using Plotly. It adds a line for the yield curve and a bar chart for the % change at each tenor, overlaying them on the same plot.
+
+Replace the relevant parts of your existing Streamlit code with this new code, especially where you're currently reading the bond yield data from CSV files. This should make your application display live scraped data.
+
+
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import plotly.express as px
+
+# Function to scrape bond yield data from CNBC
+def fetch_yield_data(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    table = soup.find('table', {'class': 'BasicTable-table'})
+    
+    maturities = []
+    yields = []
+    changes = []
+    
+    for row in table.find_all('tr')[1:]:
+        cols = row.find_all('td')
+        
+        maturity = cols[0].text.strip()
+        yield_value = float(cols[1].text.strip())
+        change = float(cols[2].text.split()[0].replace('+', '').replace('-', ''))
+        
+        maturities.append(maturity)
+        yields.append(yield_value)
+        changes.append(change)
+        
+    df = pd.DataFrame({
+        'Maturity': maturities,
+        'Yield': yields,
+        'Change': changes
+    })
+    
+    return df
+
+# URLs for different countries' bonds
+urls = {
+    'US': 'https://www.cnbc.com/us-treasurys/',
+    'UK': 'https://www.cnbc.com/uk-government-bonds/',
+    'Japan': 'https://www.cnbc.com/japan-government-bonds/',
+    'Germany': 'https://www.cnbc.com/germany-government-bonds/',
+    'France': 'https://www.cnbc.com/france-government-bonds/'
+}
+
+# Fetch yield data
+yield_choice = st.selectbox('Select Yield Curve', ['UK', 'US', 'Japan', 'Germany', 'France'])
+yield_data = fetch_yield_data(urls[yield_choice])
+
+# Plot the yield curve
+fig = px.line(yield_data, x='Maturity', y='Yield', title=f'{yield_choice} Yield Curve')
+
+# Add a bar chart layer for the % change at each tenor
+fig.add_bar(x=yield_data['Maturity'], y=yield_data['Change'], name='Change (%)')
+
+# Show the plot
+st.plotly_chart(fig)
+Integrate this snippet into your existing Streamlit application, replacing the relevant parts that deal with bond yield data. This should provide you with an option to select the yield curve for the UK, US, Japan, Germany, or France, and then display the corresponding live data.
+
+
+
+
+
+
+
+
+# Inflation Rates
+show_inflation = st.selectbox('Show Inflation Rates', ['UK', 'US', 'JP'])
+if show_inflation == 'US':
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United States")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
+    else:
+        st.write("Error fetching inflation data.")
+elif show_inflation == 'UK':  # Fixed the comparison operator here
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United Kingdom")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
+    else:
+        st.write("Error fetching inflation data.")
+elif show_inflation == 'JP':  # Fixed the comparison operator here
+    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("Japan")
+    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+    if response.status_code == requests.codes.ok:
+        inflation_data = response.json()[0]
+        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
+    else:
+        st.write("Error fetching inflation data.")
+
+
+
+st.subheader("Economic Calendar")
+iframe_code = '''
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=day&timeZone=15&lang=1" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
+'''
+st.components.v1.html(iframe_code, height=500)
