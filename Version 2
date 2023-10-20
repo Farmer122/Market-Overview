@@ -92,19 +92,20 @@ st.markdown("## **Select a headline for summary**")  # Made this text bold and b
 for headline in headline_list:
     sentiment = headlines[headline]['sentiment']
     if sentiment > 0.2:
-        color = '#00cc66'  # A professional shade of green
+        color = 'green'  # A shade of green
     elif sentiment < 0:
-        color = '#ff6666'  # A shade of red
+        color = 'red'  # A shade of red
     else:
-        color = '#808080'  # Neutral color (grey)
+        color = 'grey'  # Neutral color (grey)
     
-    expander_label = f'<div style="display: flex; align-items: center;"><svg height="20" width="20"><circle cx="10" cy="10" r="8" fill="{color}" /></svg><span style="margin-left: 10px;">{headline}</span></div>'
+    expander_label = f'<span style="color: {color};">{headline}</span>'
     with st.expander(expander_label, unsafe_allow_html=True):
         summary_url = headlines[headline]['link']
         full_article_text = fetch_article_text(summary_url)
         summary = summarize_text(full_article_text)
         st.write(f"Summary: {summary}")
         st.write(f"For more details, [click here]({summary_url})")
+
 
 
 
