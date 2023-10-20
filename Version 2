@@ -38,8 +38,18 @@ headlines = fetch_yahoo_finance_news()
 headline_list = list(headlines.keys())
 
 # Create a 2x5 table for headlines with sentiment color
-news_df = pd.DataFrame.from_dict(headlines, orient='index').reset_index()
-news_df.columns = ['Headline', 'Details']
+flat_data = []
+for headline, details in headlines.items():
+    flat_data.append({
+        'Headline': headline,
+        'Link': details['link'],
+        'Sentiment': details['sentiment']
+    })
+
+# Convert the flat dictionary to a DataFrame
+news_df = pd.DataFrame(flat_data)
+
+# Display the DataFrame as a table
 st.table(news_df)
 
 # Sentiment legend
