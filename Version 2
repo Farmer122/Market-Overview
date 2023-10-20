@@ -98,13 +98,14 @@ for headline in headline_list:
     else:
         color = '#808080'  # Neutral color (grey)
         
-    with st.expander(f"{headline} (Sentiment: ", unsafe_allow_html=True):
+    with st.expander(f"{headline} (Sentiment: "):
         st.markdown(f"<svg height='30' width='30' style='vertical-align: middle;'><circle cx='15' cy='15' r='10' fill='{color}' /></svg>)", unsafe_allow_html=True)
         summary_url = headlines[headline]['link']
         full_article_text = fetch_article_text(summary_url)
         summary = summarize_text(full_article_text)
         st.write(f"Summary: {summary}")
         st.write(f"For more details, [click here]({summary_url})")
+
 
 
 
