@@ -71,57 +71,43 @@ for headline in headline_list:
 
 xapi = 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'
 
-st.subheader('Exchange rate data')
-
-api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_EUR'
-response = requests.get(api_url, headers={'X-Api-Key': xapi})
-if response.status_code == requests.codes.ok:
-    st.write(response.text)
-else:
-    print("Error:", response.status_code, response.text)
-
-api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_JPY'
-response = requests.get(api_url, headers={'X-Api-Key': xapi})
-if response.status_code == requests.codes.ok:
-    st.write(response.text)
-else:
-    print("Error:", response.status_code, response.text)
-
-api_url = 'https://api.api-ninjas.com/v1/exchangerate?pair=USD_GBP'
-response = requests.get(api_url, headers={'X-Api-Key': xapi})
-if response.status_code == requests.codes.ok:
-    st.write(response.text)
-else:
-    print("Error:", response.status_code, response.text)
-
-# Inflation Rates
-show_inflation = st.selectbox('Show Inflation Rates', ['UK', 'US', 'JP'])
-if show_inflation == 'US':
-    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United States")
-    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
+def fetch_exchange_rate(pair):
+    api_url = f'https://api.api-ninjas.com/v1/exchangerate?pair={pair}'
+    response = requests.get(api_url, headers={'X-Api-Key': xapi})
     if response.status_code == requests.codes.ok:
-        inflation_data = response.json()[0]
-        st.write(f"US Inflation Rate: {inflation_data['yearly_rate_pct']}%")
+        return response.json()['rate']
     else:
-        st.write("Error fetching inflation data.")
-elif show_inflation == 'UK':  # Fixed the comparison operator here
-    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("United Kingdom")
-    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
-    if response.status_code == requests.codes.ok:
-        inflation_data = response.json()[0]
-        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
-    else:
-        st.write("Error fetching inflation data.")
-elif show_inflation == 'JP':  # Fixed the comparison operator here
-    api_url = 'https://api.api-ninjas.com/v1/inflation?country={}'.format("Japan")
-    response = requests.get(api_url, headers={'X-Api-Key': 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'})
-    if response.status_code == requests.codes.ok:
-        inflation_data = response.json()[0]
-        st.write(f"UK Inflation Rate: {inflation_data['yearly_rate_pct']}%")  # Fixed the message here
-    else:
-        st.write("Error fetching inflation data.")
+        print("Error:", response.status_code, response.text)
+        return None
 
+def fetch_inflation_rate(country):
+    api_url = f'https://api.api-ninjas.com/v1/inflation?country={country}'
+    response = requests.get(api_url, headers={'X-Api-Key': xapi})
+    if response.status_code == requests.codes.ok:
+        return response.json()[0]['yearly_rate_pct']
+    else:
+        print("Error:", response.status_code, response.text)
+        return None
 
+# Fetching exchange rate data
+exchange_rate_data = {
+    'Currency Pair': ['USD_EUR', 'USD_JPY', 'USD_GBP'],
+    'Exchange Rate': [fetch_exchange_rate(pair) for pair in ['USD_EUR', 'USD_JPY', 'USD_GBP']]
+}
+
+exchange_rate_df = pd.DataFrame(exchange_rate_data)
+st.subheader('Exchange Rate Data')
+st.table(exchange_rate_df)
+
+# Fetching inflation rate data
+inflation_rate_data = {
+    'Country': ['US', 'UK', 'JP'],
+    'Inflation Rate': [fetch_inflation_rate(country) for country in ["United States", "United Kingdom", "Japan"]]
+}
+
+inflation_rate_df = pd.DataFrame(inflation_rate_data)
+st.subheader('Inflation Rate Data')
+st.table(inflation_rate_df)
 
 
 
