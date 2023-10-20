@@ -3,12 +3,11 @@ import pandas as pd
 import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
-from textblob import TextBlob
 import spacy
 
 nlp = spacy.load("en_core_web_sm")
 
-# Function to scrape news from Yahoo Finance and perform sentiment analysis
+# Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://uk.finance.yahoo.com/topic/news"
     response = requests.get(url)
@@ -18,69 +17,25 @@ def fetch_yahoo_finance_news():
     for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
         text = item.get_text()
         link = item.a['href']
-        blob = TextBlob(text)
-        sentiment = blob.sentiment.polarity
 
         if text and link:
             headlines[text] = {
-                'link': f"https://finance.yahoo.com{link}",
-                'sentiment': sentiment
+                'link': f"https://finance.yahoo.com{link}"
             }
     return headlines
 
 # Web App Title
 st.title("Jamal - Dynamic Market Overview")
 
-
 headlines = fetch_yahoo_finance_news()
 headline_list = list(headlines.keys())
-
-
-flat_data = []
-for headline, details in headlines.items():
-    flat_data.append({
-        'Headline': headline,
-        'Link': details['link'],
-        'Sentiment': details['sentiment']
-    })
-
-# Convert the flat dictionary to a DataFrame
-news_df = pd.DataFrame(flat_data)
-
-
-st.subheader("Sentiment Analysis Legend")
-st.markdown("""
-    <style>
-        .legend {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .legend svg {
-            margin-right: 5px;
-        }
-    </style>
-    <div class="legend">
-        <svg height='20' width='20'><circle cx='10' cy='10' r='8' fill='#00cc66' /></svg>
-        Positive Sentiment
-    </div>
-    <div class="legend">
-        <svg height='20' width='20'><circle cx='10' cy='10' r='8' fill='#ff6666' /></svg>
-        Negative Sentiment
-    </div>
-    <div class="legend">
-        <svg height='20' width='20'><circle cx='10' cy='10' r='8' fill='#808080' /></svg>
-        Neutral Sentiment
-    </div>
-""", unsafe_allow_html=True)
-
 
 def summarize_text(text):
     doc = nlp(text)
     sentences = [sentence.orth_ for sentence in doc.sents]
     return ' '.join(sentences[:3])  # Return the first 3 sentences as a summary
 
-# Fetch the complete article text based on the URL (this is a placeholder; you'll need to implement this)
+# Fetch the complete article text based on the URL
 def fetch_article_text(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -90,25 +45,12 @@ def fetch_article_text(url):
 
 st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
 for headline in headline_list:
-    sentiment = headlines[headline]['sentiment']
-    if sentiment > 0.2:
-        color = 'green'  # A shade of green
-    elif sentiment < 0:
-        color = 'red'  # A shade of red
-    else:
-        color = 'grey'  # Neutral color (grey)
-    
-    expander_label = f'<span style="color: {color};">{headline}</span>'
-    with st.expander(expander_label, unsafe_allow_html=True):
+    with st.expander(headline):
         summary_url = headlines[headline]['link']
         full_article_text = fetch_article_text(summary_url)
         summary = summarize_text(full_article_text)
         st.write(f"Summary: {summary}")
         st.write(f"For more details, [click here]({summary_url})")
-
-
-
-
 
 xapi = 'P3jnaeiRz/shEPn4iOKD6A==aaPYULKIx9Xi7xNS'
 
