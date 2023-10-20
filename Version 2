@@ -31,13 +31,11 @@ def fetch_yahoo_finance_news():
 # Web App Title
 st.title("Jamal - Dynamic Market Overview")
 
-# Market News Headlines
-st.subheader("Market News Headlines")
 
 headlines = fetch_yahoo_finance_news()
 headline_list = list(headlines.keys())
 
-# Create a 2x5 table for headlines with sentiment color
+
 flat_data = []
 for headline, details in headlines.items():
     flat_data.append({
@@ -70,26 +68,27 @@ def fetch_article_text(url):
     article_text = ' '.join([para.text for para in paragraphs])
     return article_text
 
-st.markdown("## **Select a headline for summary**")
-selected_headline = st.selectbox('', headline_list)
-if selected_headline:
-    st.write(f"Summary for: {selected_headline}")
-    summary_url = headlines[selected_headline]['link']
-    full_article_text = fetch_article_text(summary_url)
-    summary = summarize_text(full_article_text)
-    
-    # Determine sentiment color
-    sentiment = headlines[selected_headline]['sentiment']
-    if sentiment > 0.2:
-        color = '#00cc66'  # A professional shade of green
-    elif sentiment < 0:
-        color = '#ff6666'  # A shade of red
-    else:
-        color = '#808080'  # Neutral color (grey)
-    
-    # Display sentiment indicator next to the summary
-    st.markdown(f"<svg height='30' width='30'><circle cx='15' cy='15' r='10' fill='{color}' /></svg> Summary: {summary}", unsafe_allow_html=True)
-    st.write(f"For more details, [click here]({summary_url})")
+cols = st.columns(2)
+for i in range(2):
+    with cols[i]:
+        for headline in headline_list[5*i:5*(i+1)]:
+            sentiment = headlines[headline]['sentiment']
+            if sentiment > 0.2:
+                color = '#00cc66'  # A professional shade of green
+            elif sentiment < 0:
+                color = '#ff6666'  # A shade of red
+            else:
+                color = '#808080'  # Neutral color (grey)
+            
+            st.markdown(f"<div style='display: flex; align-items: center;'><svg height='20' width='20'><circle cx='10' cy='10' r='8' fill='{color}' /></svg><span style='margin-left: 10px;'>{headline}</span></div>", unsafe_allow_html=True)
+            
+            # On click, fetch and display the article summary
+            if st.button(f"Summarize {headline}"):
+                summary_url = headlines[headline]['link']
+                full_article_text = fetch_article_text(summary_url)
+                summary = summarize_text(full_article_text)
+                st.write(f"Summary: {summary}")
+                st.write(f"For more details, [click here]({summary_url})")
 
 
 
