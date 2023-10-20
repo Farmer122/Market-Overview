@@ -49,8 +49,7 @@ for headline, details in headlines.items():
 # Convert the flat dictionary to a DataFrame
 news_df = pd.DataFrame(flat_data)
 
-# Display the DataFrame as a table
-st.table(news_df)
+
 
 # Sentiment legend
 st.subheader("Sentiment Analysis Legend")
@@ -71,15 +70,26 @@ def fetch_article_text(url):
     article_text = ' '.join([para.text for para in paragraphs])
     return article_text
 
-# Dynamic News Summary
-st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
-for headline in headline_list:
-    with st.expander(headline):
-        summary_url = headlines[headline]['link']
-        full_article_text = fetch_article_text(summary_url)
-        summary = summarize_text(full_article_text)
-        st.write(f"Summary: {summary}")
-        st.write(f"For more details, [click here]({summary_url})")
+st.markdown("## **Select a headline for summary**")
+selected_headline = st.selectbox('', headline_list)
+if selected_headline:
+    st.write(f"Summary for: {selected_headline}")
+    summary_url = headlines[selected_headline]['link']
+    full_article_text = fetch_article_text(summary_url)
+    summary = summarize_text(full_article_text)
+    
+    # Determine sentiment color
+    sentiment = headlines[selected_headline]['sentiment']
+    if sentiment > 0.2:
+        color = '#00cc66'  # A professional shade of green
+    elif sentiment < 0:
+        color = '#ff6666'  # A shade of red
+    else:
+        color = '#808080'  # Neutral color (grey)
+    
+    # Display sentiment indicator next to the summary
+    st.markdown(f"<svg height='30' width='30'><circle cx='15' cy='15' r='10' fill='{color}' /></svg> Summary: {summary}", unsafe_allow_html=True)
+    st.write(f"For more details, [click here]({summary_url})")
 
 
 
