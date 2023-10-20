@@ -5,9 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 import spacy
 import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from textblob import TextBlob
 
-nltk.download('vader_lexicon')
 
 nlp = spacy.load("en_core_web_sm")
 sia = SentimentIntensityAnalyzer()
@@ -47,15 +46,17 @@ def fetch_article_text(url):
     article_text = ' '.join([para.text for para in paragraphs])
     return article_text
 
+
+
 def get_sentiment(text):
-    sentiment_score = sia.polarity_scores(text)
-    if sentiment_score['compound'] > 0.05:
+    blob = TextBlob(text)
+    sentiment_score = blob.sentiment.polarity
+    if sentiment_score > 0.05:
         return 'Positive', '#00cc66'  # green
-    elif sentiment_score['compound'] < -0.05:
+    elif sentiment_score < -0.05:
         return 'Negative', '#ff6666'  # red
     else:
         return 'Neutral', '#ffffff'  # white
-
 
 st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
 for headline in headline_list:
