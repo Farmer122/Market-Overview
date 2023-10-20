@@ -89,6 +89,7 @@ def fetch_article_text(url):
     return article_text
 
 st.markdown("## **Select a headline for summary**")  # Made this text bold and bigger
+
 for headline in headline_list:
     sentiment = headlines[headline]['sentiment']
     if sentiment > 0.2:
@@ -99,12 +100,18 @@ for headline in headline_list:
         color = '#808080'  # Neutral color (grey)
     
     expander_label = f'<div style="display: flex; align-items: center;"><svg height="20" width="20"><circle cx="10" cy="10" r="8" fill="{color}" /></svg><span style="margin-left: 10px;">{headline}</span></div>'
-    with st.expander(expander_label, unsafe_allow_html=True):
+    expander_key = f"expander_{headline}"  # Unique key for each expander
+    expanded = st.session_state.get(expander_key, False)  # Get current state of expander
+    if st.markdown(f"<a href='javascript:void(0);' onclick='document.getElementById(\"{expander_key}\").click();'>{expander_label}</a>", unsafe_allow_html=True):
+        expanded = not expanded  # Toggle expander state
+        st.session_state[expander_key] = expanded  # Update session state
+    with st.expander(headline, expanded=expanded, key=expander_key):
         summary_url = headlines[headline]['link']
         full_article_text = fetch_article_text(summary_url)
         summary = summarize_text(full_article_text)
         st.write(f"Summary: {summary}")
         st.write(f"For more details, [click here]({summary_url})")
+
 
 
 
