@@ -10,6 +10,37 @@ from textblob import TextBlob
 
 nlp = spacy.load("en_core_web_sm")
 
+
+from collections import Counter
+
+def generate_overall_summary(articles):
+    # Combine all articles into one large string
+    combined_text = ' '.join(articles)
+    
+    # Process the combined text with SpaCy
+    doc = nlp(combined_text)
+    
+    # Identify the most common nouns and adjectives
+    words = [token.text for token in doc if token.is_alpha]
+    pos_count = Counter([token.pos_ for token in doc])
+    common_nouns = [token.text for token in doc if token.pos_ == "NOUN"]
+    common_adj = [token.text for token in doc if token.pos_ == "ADJ"]
+    
+    freq_nouns = Counter(common_nouns).most_common(5)
+    freq_adj = Counter(common_adj).most_common(5)
+    
+    # Generate a summary based on the most common nouns and adjectives
+    summary = f"The predominant themes in today's news focus on {' '.join([word[0] for word in freq_nouns])}. " \
+              f"The narrative is generally {' '.join([word[0] for word in freq_adj])}."
+    
+    return summary
+
+full_articles = [fetch_article_text(url) for url in [headlines[h]['link'] for h in headline_list]]
+
+overall_summary = generate_overall_summary(full_articles)
+st.markdown(f"## Overall News Summary")
+st.write(overall_summary)
+
 # Function to scrape news from Yahoo Finance
 def fetch_yahoo_finance_news():
     url = "https://finance.yahoo.com/topic/economic-news"
