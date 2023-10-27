@@ -13,6 +13,33 @@ nlp = spacy.load("en_core_web_sm")
 
 from collections import Counter
 
+# Function to scrape news from Yahoo Finance
+def fetch_yahoo_finance_news():
+    url = "https://finance.yahoo.com/topic/economic-news"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    headlines = {}
+
+    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
+        text = item.get_text()
+        link = item.a['href']
+
+        if text and link:
+            headlines[text] = {
+                'link': f"https://finance.yahoo.com{link}"
+            }
+    return headlines
+
+# Web App Title
+st.title("Rates Focus Market Overview")
+st.markdown('By Jamal Lawal')
+
+
+
+headlines = fetch_yahoo_finance_news()
+headline_list = list(headlines.keys())
+
+
 def generate_overall_summary(articles):
     # Combine all articles into one large string
     combined_text = ' '.join(articles)
@@ -35,35 +62,7 @@ def generate_overall_summary(articles):
     
     return summary
 
-full_articles = [fetch_article_text(url) for url in [headlines[h]['link'] for h in headline_list]]
 
-overall_summary = generate_overall_summary(full_articles)
-st.markdown(f"## Overall News Summary")
-st.write(overall_summary)
-
-# Function to scrape news from Yahoo Finance
-def fetch_yahoo_finance_news():
-    url = "https://finance.yahoo.com/topic/economic-news"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    headlines = {}
-
-    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
-        text = item.get_text()
-        link = item.a['href']
-
-        if text and link:
-            headlines[text] = {
-                'link': f"https://finance.yahoo.com{link}"
-            }
-    return headlines
-
-# Web App Title
-st.title("Rates Focus Market Overview")
-st.markdown('By Jamal Lawal')
-
-headlines = fetch_yahoo_finance_news()
-headline_list = list(headlines.keys())
 
 def summarize_text(text):
     doc = nlp(text)
@@ -89,6 +88,12 @@ def get_sentiment(text):
         return 'Negative', '#ff6666'  # red
     else:
         return 'Neutral', '#ffffff'  # white
+
+full_articles = [fetch_article_text(url) for url in [headlines[h]['link'] for h in headline_list]]
+
+overall_summary = generate_overall_summary(full_articles)
+st.markdown(f"## Overall News Summary")
+st.write(overall_summary)
 
 st.markdown("## **Select a headline for summary**")
 st.write("Source: Top 10 economics news headlines from Yahoo Finance")  # Made this text bold and bigger
