@@ -1,0 +1,246 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import requests
+from bs4 import BeautifulSoup
+import spacy
+import nltk
+from textblob import TextBlob
+
+
+nlp = spacy.load("en_core_web_sm")
+
+# Function to scrape news from Yahoo Finance
+def fetch_yahoo_finance_news():
+    url = "https://finance.yahoo.com/topic/economic-news"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    headlines = {}
+
+    for item in soup.find_all('h3', {'class': lambda x: x and 'Mb(5px)' in x}):
+        text = item.get_text()
+        link = item.a['href']
+
+        if text and link:
+            headlines[text] = {
+                'link': f"https://finance.yahoo.com{link}"
+            }
+    return headlines
+
+# Web App Title
+st.title("Rates Focus Market Overview")
+st.markdown('By Jamal Lawal')
+
+headlines = fetch_yahoo_finance_news()
+headline_list = list(headlines.keys())
+
+def summarize_text(text):
+    doc = nlp(text)
+    sentences = [sentence.orth_ for sentence in doc.sents]
+    return ' '.join(sentences[:3])  # Return the first 3 sentences as a summary
+
+# Fetch the complete article text based on the URL
+def fetch_article_text(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    paragraphs = soup.find_all('p')
+    article_text = ' '.join([para.text for para in paragraphs])
+    return article_text
+
+
+
+def get_sentiment(text):
+    blob = TextBlob(text)
+    sentiment_score = blob.sentiment.polarity
+    if sentiment_score > 0.00:
+        return 'Positive', '#00cc66'  # green
+    elif sentiment_score < 0.00:
+        return 'Negative', '#ff6666'  # red
+    else:
+        return 'Neutral', '#ffffff'  # white
+
+st.markdown("## **Select a headline for summary**")
+st.write("Source: Top 10 economics news headlines from Yahoo Finance")  # Made this text bold and bigger
+for headline in headline_list:
+    with st.expander(headline):
+        summary_url = headlines[headline]['link']
+        full_article_text = fetch_article_text(summary_url)
+        summary = summarize_text(full_article_text)
+        sentiment, color = get_sentiment(full_article_text)
+        st.write(f"Summary: {summary}")
+        st.markdown(f"Sentiment: <span style='background-color:{color};'>{sentiment}</span>", unsafe_allow_html=True)
+        st.write(f"For more details, [click here]({summary_url})")
+
+
+st.subheader("Economic Calendar")
+calender_choice = st.selectbox('Select Calender Focus', ['General', 'Focussed'])
+if calender_choice == 'General':
+    st.write("Economic Calendar (General)")
+    iframe_code = '''
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone,timeselector,filters&countries=72,22,17,35,12,4,5&calType=week&timeZone=15&lang=51" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe><div class="poweredBy" style="font-family: Arial, Helvetica, sans-serif;"><span style="font-size: 11px;color: #333333;text-decoration: none;">Real Time Economic Calendar provided by <a href="https://uk.Investing.com/" rel="nofollow" target="_blank" style="font-size: 11px;color: #06529D; font-weight: bold;" class="underline_link">Investing.com UK</a>.</span></div>
+'''
+    st.components.v1.html(iframe_code, height=500)
+
+
+elif calender_choice == 'Focussed':
+    st.write("Economic Calendar (Focussed)")
+    iframe_code = '''
+<iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&category=_centralBanks&importance=3&features=datepicker,timezone,timeselector,filters&countries=72,35,4,5&calType=week&timeZone=15&lang=51" width="650" height="467" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe><div class="poweredBy" style="font-family: Arial, Helvetica, sans-serif;"><span style="font-size: 11px;color: #333333;text-decoration: none;">Real Time Economic Calendar provided by <a href="https://uk.Investing.com/" rel="nofollow" target="_blank" style="font-size: 11px;color: #06529D; font-weight: bold;" class="underline_link">Investing.com UK</a>.</span></div>
+'''
+    st.components.v1.html(iframe_code, height=500)
+
+
+st.subheader("Exchange Rates")
+exchange_choice = st.selectbox('Select Yield Curve', ['Spot', 'Heatmap'])
+
+if exchange_choice == 'Spot':
+    iframe_code = '''<!-- TradingView Widget BEGIN -->
+<div class="tradingview-widget-container">
+  <div class="tradingview-widget-container__widget"></div>
+  <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-forex-cross-rates.js" async>
+  {
+  "width": "800",
+  "height": "600",
+  "currencies": [
+    "EUR",
+    "USD",
+    "JPY",
+    "GBP",
+    "CHF",
+    "AUD",
+    "CAD",
+    "NZD"
+  ],
+  "isTransparent": false,
+  "colorTheme": "light",
+  "locale": "en"
+}
+  </script>
+</div>
+<!-- TradingView Widget END -->
+'''
+    st.components.v1.html(iframe_code, height= 600, width = 800)
+    
+elif exchange_choice == 'Heatmap':
+    iframe_code = '''<!-- TradingView Widget BEGIN -->
+<div class="tradingview-widget-container">
+  <div class="tradingview-widget-container__widget"></div>
+  <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-forex-heat-map.js" async>
+  {
+  "width": "800",
+  "height": "600",
+  "currencies": [
+    "EUR",
+    "USD",
+    "JPY",
+    "GBP",
+    "CHF",
+    "AUD",
+    "CAD",
+    "NZD"
+  ],
+  "isTransparent": false,
+  "colorTheme": "light",
+  "locale": "en"
+}
+  </script>
+</div>
+<!-- TradingView Widget END -->
+
+'''
+    st.components.v1.html(iframe_code, height= 600, width = 800)
+
+
+
+    
+
+st.subheader("Government Bonds")
+iframe_code = '''
+<!-- TradingView Widget BEGIN -->
+<div class="tradingview-widget-container">
+  <div class="tradingview-widget-container__widget"></div>
+  <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js" async>
+  {
+  "width": "800",
+  "height": "600",
+  "symbolsGroups": [
+    {
+      "name": "US Treasuries",
+      "originalName": "Bonds",
+      "symbols": [
+        {
+          "name": "TVC:US01MY"
+        },
+        {
+          "name": "TVC:US03MY"
+        },
+        {
+          "name": "TVC:US06MY"
+        },
+        {
+          "name": "TVC:US01Y"
+        },
+        {
+          "name": "TVC:US03Y"
+        },
+        {
+          "name": "TVC:US05Y"
+        },
+        {
+          "name": "TVC:US07Y"
+        },
+        {
+          "name": "TVC:US10"
+        },
+        {
+          "name": "TVC:US20"
+        },
+        {
+          "name": "TVC:US30"
+        }
+      ]
+    },
+    {
+      "name": "UK GILTS",
+      "originalName": "Forex",
+      "symbols": [
+        {
+          "name": "TVC:GB03MY"
+        },
+        {
+          "name": "TVC:GB01Y"
+        },
+        {
+          "name": "TVC:GB02Y"
+        },
+        {
+          "name": "TVC:GB05Y"
+        },
+        {
+          "name": "TVC:GB07Y"
+        },
+        {
+          "name": "TVC:GB10"
+        },
+        {
+          "name": "TVC:GB20Y"
+        },
+        {
+          "name": "TVC:GB30Y"
+        }
+      ]
+    }
+  ],
+  "showSymbolLogo": true,
+  "colorTheme": "light",
+  "isTransparent": false,
+  "locale": "en"
+}
+  </script>
+</div>
+<!-- TradingView Widget END -->
+'''
+st.components.v1.html(iframe_code, height= 600, width = 800)
